@@ -12,7 +12,7 @@ services:
     container_name: quantdinger-backend
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     volumes:
       # Persistent database and logs
       - ./backend_api_python/quantdinger.db:/app/quantdinger.db

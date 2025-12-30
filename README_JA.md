@@ -211,36 +211,30 @@ QuantDingerは、包括的な国際化対応により、世界中のユーザー
 
 QuantDingerを実行する最速の方法です。
 
-#### 1. 設定の準備
+#### 1. ワンクリック起動
 
-Linux/macOS:
-
+**Linux / macOS**
 ```bash
-cp docker.env.example backend_api_python/.env
-nano backend_api_python/.env
-```
-
-Windows PowerShell:
-
-```powershell
-Copy-Item docker.env.example backend_api_python/.env
-notepad backend_api_python/.env
-```
-
-**必須設定:**
-- `SECRET_KEY` - アプリケーションシークレット（ランダムな文字列を使用）
-- `ADMIN_USER` / `ADMIN_PASSWORD` - ログイン認証情報
-- `OPENROUTER_API_KEY` - OpenRouter APIキー（AI分析に必要）
-
-#### 2. ビルドと起動
-
-```bash
-# イメージのビルドと起動（初回）
+git clone https://github.com/brokermr810/QuantDinger.git && \
+cd QuantDinger && \
+cp docker.env.example backend_api_python/.env && \
 docker-compose up -d --build
-
-# 2回目以降の起動（再ビルド不要）
-docker-compose up -d
 ```
+
+**Windows (PowerShell)**
+```powershell
+git clone https://github.com/brokermr810/QuantDinger.git
+cd QuantDinger
+Copy-Item docker.env.example backend_api_python/.env
+docker-compose up -d --build
+```
+
+#### 2. アクセスと設定
+
+- **フロントエンド UI**: http://localhost
+- **デフォルトアカウント**: `quantdinger` / `123456`
+
+> **注意**: AI機能や本番環境のセキュリティのために、`backend_api_python/.env` を編集し（`OPENROUTER_API_KEY`の追加、パスワードの変更）、`docker-compose restart backend` でサービスを再起動してください。
 
 #### 3. アプリケーションへのアクセス
 

@@ -225,36 +225,30 @@ QuantDinger 為全球用戶構建，提供全面的國際化支持：
 
 運行 QuantDinger 最快的方式。
 
-#### 1. 準備配置
+#### 1. 一鍵啟動
 
-Linux/macOS:
-
+**Linux / macOS**
 ```bash
-cp docker.env.example backend_api_python/.env
-nano backend_api_python/.env
-```
-
-Windows PowerShell:
-
-```powershell
-Copy-Item docker.env.example backend_api_python/.env
-notepad backend_api_python/.env
-```
-
-**必需設置：**
-- `SECRET_KEY` - 應用密鑰，使用隨機字符串
-- `ADMIN_USER` / `ADMIN_PASSWORD` - 登錄憑據
-- `OPENROUTER_API_KEY` - OpenRouter API 密鑰 (AI 分析必需)
-
-#### 2. 構建並啟動
-
-```bash
-# 構建鏡像並啟動 (首次運行)
+git clone https://github.com/brokermr810/QuantDinger.git && \
+cd QuantDinger && \
+cp docker.env.example backend_api_python/.env && \
 docker-compose up -d --build
-
-# 後續啟動 (無需重新構建)
-docker-compose up -d
 ```
+
+**Windows (PowerShell)**
+```powershell
+git clone https://github.com/brokermr810/QuantDinger.git
+cd QuantDinger
+Copy-Item docker.env.example backend_api_python/.env
+docker-compose up -d --build
+```
+
+#### 2. 訪問與配置
+
+- **前端 UI**: http://localhost
+- **默認賬號**: `quantdinger` / `123456`
+
+> **注意**：為了使用 AI 功能或生產環境安全，請編輯 `backend_api_python/.env`（添加 `OPENROUTER_API_KEY`，修改密碼），然後執行 `docker-compose restart backend` 重啟服務。
 
 #### 3. 訪問應用
 

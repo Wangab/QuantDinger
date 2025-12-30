@@ -225,36 +225,30 @@ All UI elements, error messages, and documentation are fully translated. Languag
 
 The fastest way to get QuantDinger running.
 
-#### 1. Prepare Configuration
+#### 1. Start Services
 
-Linux/macOS:
-
+**Linux / macOS**
 ```bash
-cp docker.env.example backend_api_python/.env
-nano backend_api_python/.env
-```
-
-Windows PowerShell:
-
-```powershell
-Copy-Item docker.env.example backend_api_python/.env
-notepad backend_api_python/.env
-```
-
-**Required settings:**
-- `SECRET_KEY` - Application secret, use a random string
-- `ADMIN_USER` / `ADMIN_PASSWORD` - Login credentials
-- `OPENROUTER_API_KEY` - OpenRouter API key (required for AI analysis)
-
-#### 2. Build and Start
-
-```bash
-# Build images and start (first run)
+git clone https://github.com/brokermr810/QuantDinger.git && \
+cd QuantDinger && \
+cp docker.env.example backend_api_python/.env && \
 docker-compose up -d --build
-
-# Subsequent starts (no rebuild needed)
-docker-compose up -d
 ```
+
+**Windows (PowerShell)**
+```powershell
+git clone https://github.com/brokermr810/QuantDinger.git
+cd QuantDinger
+Copy-Item docker.env.example backend_api_python/.env
+docker-compose up -d --build
+```
+
+#### 2. Configuration & Access
+
+- **Frontend UI**: http://localhost
+- **Default Account**: `quantdinger` / `123456`
+
+> **Note**: For production or AI features, edit `backend_api_python/.env` (add `OPENROUTER_API_KEY`, change passwords) and restart with `docker-compose restart backend`.
 
 #### 3. Access the Application
 
