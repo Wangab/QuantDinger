@@ -1452,12 +1452,12 @@ export default {
     // 获取市场颜色
     const getMarketColor = (market) => {
       const colors = {
-        'AShare': 'blue',
         'USStock': 'green',
-        'HShare': 'orange',
         'Crypto': 'purple',
         'Forex': 'gold',
-        'Futures': 'cyan'
+        'Futures': 'cyan',
+        'AShare': 'blue',
+        'HShare': 'orange'
       }
       return colors[market] || 'default'
     }

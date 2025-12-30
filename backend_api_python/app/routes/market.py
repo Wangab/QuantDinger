@@ -88,12 +88,12 @@ def get_market_types():
     data = (cfg.get('market', {}) or {}).get('types')
     if not isinstance(data, list) or not data:
         data = [
-            {'value': 'AShare', 'i18nKey': 'dashboard.analysis.market.AShare'},
             {'value': 'USStock', 'i18nKey': 'dashboard.analysis.market.USStock'},
-            {'value': 'HShare', 'i18nKey': 'dashboard.analysis.market.HShare'},
             {'value': 'Crypto', 'i18nKey': 'dashboard.analysis.market.Crypto'},
             {'value': 'Forex', 'i18nKey': 'dashboard.analysis.market.Forex'},
-            {'value': 'Futures', 'i18nKey': 'dashboard.analysis.market.Futures'}
+            {'value': 'Futures', 'i18nKey': 'dashboard.analysis.market.Futures'},
+            {'value': 'AShare', 'i18nKey': 'dashboard.analysis.market.AShare'},
+            {'value': 'HShare', 'i18nKey': 'dashboard.analysis.market.HShare'}
         ]
     return jsonify({'code': 1, 'msg': 'success', 'data': data})
 
