@@ -14,9 +14,12 @@ import json
 import os
 import re
 import time
+import traceback
 from typing import Any, Dict, List
 
 from flask import Blueprint, Response, jsonify, request
+import pandas as pd
+import numpy as np
 
 from app.utils.db import get_db_connection
 from app.utils.logger import get_logger
@@ -78,6 +81,38 @@ def _row_to_indicator(row: Dict[str, Any], user_id: int) -> Dict[str, Any]:
         "createtime": row.get("createtime") or row.get("created_at"),
         "updatetime": row.get("updatetime") or row.get("updated_at"),
     }
+
+
+def _generate_mock_df(length=200):
+    """Generate mock K-line data for verification."""
+    from datetime import datetime, timedelta
+    
+    dates = [datetime.now() - timedelta(minutes=i) for i in range(length)]
+    dates.reverse()
+    
+    # Random walk with trend
+    returns = np.random.normal(0, 0.002, length)
+    price_path = 10000 * np.exp(np.cumsum(returns))
+    
+    close = price_path
+    high = close * (1 + np.abs(np.random.normal(0, 0.001, length)))
+    low = close * (1 - np.abs(np.random.normal(0, 0.001, length)))
+    open_p = close * (1 + np.random.normal(0, 0.001, length)) # Slight deviation from close
+    # Ensure High is highest and Low is lowest
+    high = np.maximum(high, np.maximum(open_p, close))
+    low = np.minimum(low, np.minimum(open_p, close))
+    
+    volume = np.abs(np.random.normal(100, 50, length)) * 1000
+    
+    df = pd.DataFrame({
+        'time': [int(d.timestamp() * 1000) for d in dates],
+        'open': open_p,
+        'high': high,
+        'low': low,
+        'close': close,
+        'volume': volume
+    })
+    return df
 
 
 @indicator_bp.route("/getIndicators", methods=["POST"])
@@ -223,6 +258,117 @@ def delete_indicator():
     except Exception as e:
         logger.error(f"delete_indicator failed: {str(e)}", exc_info=True)
         return jsonify({"code": 0, "msg": str(e), "data": None}), 500
+
+
+@indicator_bp.route("/verifyCode", methods=["POST"])
+def verify_code():
+    """
+    Verify/Dry-run indicator code with mock data.
+    Checks for:
+    - Syntax errors
+    - Runtime errors
+    - Output format (must define 'output' dict)
+    """
+    try:
+        data = request.get_json() or {}
+        code = data.get("code") or ""
+        
+        if not code or not str(code).strip():
+            return jsonify({"code": 0, "msg": "Code is empty", "data": None}), 400
+
+        # 1. Generate mock data
+        df = _generate_mock_df()
+        
+        # 2. Prepare execution environment
+        exec_env = {
+            'df': df.copy(),
+            'pd': pd,
+            'np': np,
+            'output': None
+        }
+        
+        # 3. Execute code
+        try:
+            exec(code, exec_env)
+        except SyntaxError as e:
+            return jsonify({
+                "code": 0, 
+                "msg": f"Syntax Error at line {e.lineno}: {e.msg}", 
+                "data": {"type": "SyntaxError", "line": e.lineno, "details": str(e)}
+            })
+        except Exception as e:
+            # Capture traceback for better debugging
+            tb = traceback.format_exc()
+            # Extract the line number from the exec() call in the traceback if possible
+            # This is tricky because the traceback includes the backend frames. 
+            # We'll just return the exception message.
+            return jsonify({
+                "code": 0, 
+                "msg": f"Runtime Error: {str(e)}", 
+                "data": {"type": type(e).__name__, "details": tb}
+            })
+            
+        # 4. Check output
+        output = exec_env.get('output')
+        
+        if output is None:
+            return jsonify({
+                "code": 0, 
+                "msg": "Missing 'output' variable. Your code must define an 'output' dictionary.", 
+                "data": {"type": "MissingOutput"}
+            })
+            
+        if not isinstance(output, dict):
+            return jsonify({
+                "code": 0, 
+                "msg": f"'output' must be a dictionary, got {type(output).__name__}", 
+                "data": {"type": "InvalidOutputType"}
+            })
+            
+        # Check required fields
+        if 'plots' not in output and 'signals' not in output:
+             return jsonify({
+                "code": 0, 
+                "msg": "'output' dict should contain 'plots' or 'signals' list.", 
+                "data": {"type": "InvalidOutputStructure"}
+            })
+            
+        # Basic check for lengths
+        plots = output.get('plots', [])
+        signals = output.get('signals', [])
+        
+        for p in plots:
+            if 'data' not in p:
+                return jsonify({"code": 0, "msg": f"Plot '{p.get('name')}' missing 'data' field.", "data": {"type": "InvalidPlot"}})
+            if len(p['data']) != len(df):
+                return jsonify({
+                    "code": 0, 
+                    "msg": f"Plot '{p.get('name')}' data length ({len(p['data'])}) does not match DataFrame length ({len(df)}).", 
+                    "data": {"type": "LengthMismatch"}
+                })
+                
+        for s in signals:
+            if 'data' not in s:
+                return jsonify({"code": 0, "msg": f"Signal '{s.get('type')}' missing 'data' field.", "data": {"type": "InvalidSignal"}})
+            if len(s['data']) != len(df):
+                return jsonify({
+                    "code": 0, 
+                    "msg": f"Signal '{s.get('type')}' data length ({len(s['data'])}) does not match DataFrame length ({len(df)}).", 
+                    "data": {"type": "LengthMismatch"}
+                })
+
+        return jsonify({
+            "code": 1, 
+            "msg": "Verification passed! Code executed successfully.", 
+            "data": {
+                "plots_count": len(plots),
+                "signals_count": len(signals)
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"verify_code failed: {str(e)}", exc_info=True)
+        return jsonify({"code": 0, "msg": f"System Error: {str(e)}", "data": None}), 500
 
 
 @indicator_bp.route("/aiGenerate", methods=["POST"])
@@ -429,5 +575,3 @@ IMPORTANT: Output Python code directly, without explanations, without descriptio
             "X-Accel-Buffering": "no",
         },
     )
-
-

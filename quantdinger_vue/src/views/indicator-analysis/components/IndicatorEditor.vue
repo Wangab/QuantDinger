@@ -25,6 +25,16 @@
                   <span class="section-title">{{ $t('dashboard.indicator.editor.code') }}</span>
                 </div>
                 <div class="section-actions">
+                  <a-button
+                    type="link"
+                    size="small"
+                    @click="handleVerifyCode"
+                    :loading="verifying"
+                    style="padding: 0 8px; color: #52c41a; font-weight: bold;"
+                  >
+                    <a-icon type="check-circle" />
+                    {{ $t('dashboard.indicator.editor.verifyCode') }}
+                  </a-button>
                   <a-button type="link" size="small" @click="goToDocs" style="padding: 0;">
                     <a-icon type="book" />
                     {{ $t('dashboard.indicator.editor.guide') }}
@@ -105,6 +115,7 @@ import 'codemirror/addon/edit/matchbrackets'
 import 'codemirror/addon/selection/active-line'
 import storage from 'store'
 import { ACCESS_TOKEN } from '@/store/mutation-types'
+import request from '@/utils/request'
 
 export default {
   name: 'IndicatorEditor',
@@ -128,6 +139,7 @@ export default {
       codeEditor: null,
       aiPrompt: '',
       aiGenerating: false,
+      verifying: false,
       isMobile: false
     }
   },
@@ -391,6 +403,55 @@ export default {
     // 跳转到文档中心
     goToDocs () {
       window.open('https://github.com/brokermr810/QuantDinger/blob/main/docs/STRATEGY_DEV_GUIDE.md', '_blank')
+    },
+
+    // 验证代码
+    handleVerifyCode () {
+      const code = this.codeEditor ? this.codeEditor.getValue() : ''
+      if (!code || !code.trim()) {
+        this.$message.warning(this.$t('dashboard.indicator.editor.verifyCodeEmpty'))
+        return
+      }
+
+      this.verifying = true
+      // 使用 request 工具（axios）发送请求，它会自动处理 baseURL 和 token
+      request({
+        url: '/api/indicator/verifyCode',
+        method: 'post',
+        data: { code: code }
+      }).then(res => {
+        if (res.code === 1) {
+          const data = res.data || {}
+          this.$message.success(`${this.$t('dashboard.indicator.editor.verifyCodeSuccess')} (${data.plots_count || 0} plots, ${data.signals_count || 0} signals)`)
+        } else {
+          // 显示详细错误
+          const errorData = res.data || {}
+          this.$error({
+            title: this.$t('dashboard.indicator.editor.verifyCodeFailed'),
+            width: 600,
+            content: (h) => {
+              return h('div', [
+                h('p', { style: { fontWeight: 'bold', color: '#ff4d4f' } }, res.msg),
+                errorData.details ? h('pre', {
+                  style: {
+                    background: '#f5f5f5',
+                    padding: '8px',
+                    overflow: 'auto',
+                    maxHeight: '300px',
+                    marginTop: '8px',
+                    fontSize: '12px',
+                    fontFamily: 'monospace'
+                  }
+                }, errorData.details) : null
+              ])
+            }
+          })
+        }
+      }).catch(err => {
+        this.$message.error('Request Failed: ' + (err.message || 'Unknown Error'))
+      }).finally(() => {
+        this.verifying = false
+      })
     },
 
     // 清理代码中的 markdown 代码块标记
