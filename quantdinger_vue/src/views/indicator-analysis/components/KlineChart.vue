@@ -1830,7 +1830,7 @@ registerOverlay({
               // - high: 取最大值（时间段内的最高价）
               // - low: 取最小值（时间段内的最低价）
               // - close: 更新为最新价格（当前价格）
-              // - volume: 累加（时间段内的总成交量）
+              // - volume: 使用API返回的最新值（API返回的已是该周期的总成交量，无需累加）
               const existingLast = existingData[existingData.length - 1]
               const newLast = newData[newData.length - 1]
 
@@ -1840,7 +1840,7 @@ registerOverlay({
                 high: Math.max(existingLast.high, newLast.high), // 最高价取最大值
                 low: Math.min(existingLast.low, newLast.low), // 最低价取最小值
                 close: newLast.close, // 收盘价更新为最新价格
-                volume: existingLast.volume + newLast.volume // 成交量累加
+                volume: newLast.volume // 成交量使用API返回的最新值（已是该周期的总成交量）
               }
               klineData.value = existingData
 
