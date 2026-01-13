@@ -748,17 +748,16 @@ def _send_monitor_notification(
                 try:
                     ch = str(channel).strip().lower()
                     if ch == 'browser':
-                        now = _now_ts()
                         with get_db_connection() as db:
                             cur = db.cursor()
                             cur.execute(
                                 """
                                 INSERT INTO qd_strategy_notifications
                                 (user_id, strategy_id, symbol, signal_type, channels, title, message, payload_json, created_at)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                VALUES (?, NULL, ?, ?, ?, ?, ?, ?, NOW())
                                 """,
-                                (effective_user_id, 0, 'PORTFOLIO', 'ai_monitor', 'browser', error_title, error_msg,
-                                 json.dumps(result, ensure_ascii=False), now)
+                                (effective_user_id, 'PORTFOLIO', 'ai_monitor', 'browser', error_title, error_msg,
+                                 json.dumps(result, ensure_ascii=False))
                             )
                             db.commit()
                             cur.close()
@@ -795,17 +794,16 @@ def _send_monitor_notification(
                 
                 if ch == 'browser':
                     # Browser notification uses HTML report
-                    now = _now_ts()
                     with get_db_connection() as db:
                         cur = db.cursor()
                         cur.execute(
                             """
                             INSERT INTO qd_strategy_notifications
                             (user_id, strategy_id, symbol, signal_type, channels, title, message, payload_json, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            VALUES (?, NULL, ?, ?, ?, ?, ?, ?, NOW())
                             """,
-                            (effective_user_id, 0, 'PORTFOLIO', 'ai_monitor', 'browser', title, html_report,
-                             json.dumps(result, ensure_ascii=False), now)
+                            (effective_user_id, 'PORTFOLIO', 'ai_monitor', 'browser', title, html_report,
+                             json.dumps(result, ensure_ascii=False))
                         )
                         db.commit()
                         cur.close()
@@ -1087,10 +1085,10 @@ def _check_position_alerts():
                                         """
                                         INSERT INTO qd_strategy_notifications
                                         (user_id, strategy_id, symbol, signal_type, channels, title, message, payload_json, created_at)
-                                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, NOW())
                                         """,
-                                        (alert_user_id, 0, symbol, 'price_alert', 'browser', alert_title, alert_message,
-                                         json.dumps({'alert_id': alert_id, 'alert_type': alert_type}, ensure_ascii=False), now)
+                                        (alert_user_id, symbol, 'price_alert', 'browser', alert_title, alert_message,
+                                         json.dumps({'alert_id': alert_id, 'alert_type': alert_type}, ensure_ascii=False))
                                     )
                                     db.commit()
                                     cur.close()
@@ -1178,10 +1176,10 @@ def notify_strategy_signal_for_positions(market: str, symbol: str, signal_type: 
                     """
                     INSERT INTO qd_strategy_notifications
                     (user_id, strategy_id, symbol, signal_type, channels, title, message, payload_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, NULL, ?, ?, ?, ?, ?, ?, NOW())
                     """,
-                    (pos_user_id, 0, symbol, 'strategy_linkage', 'browser', title, message,
-                     json.dumps({'signal_type': signal_type}, ensure_ascii=False), now)
+                    (pos_user_id, symbol, 'strategy_linkage', 'browser', title, message,
+                     json.dumps({'signal_type': signal_type}, ensure_ascii=False))
                 )
                 db.commit()
                 cur.close()

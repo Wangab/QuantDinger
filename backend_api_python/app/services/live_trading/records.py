@@ -39,7 +39,6 @@ def record_trade(
     profit: Optional[float] = None,
     user_id: int = None,
 ) -> None:
-    now = int(time.time())
     value = float(amount or 0.0) * float(price or 0.0)
     if user_id is None:
         user_id = _get_user_id_from_strategy(strategy_id)
@@ -50,7 +49,7 @@ def record_trade(
             INSERT INTO qd_strategy_trades
             (user_id, strategy_id, symbol, type, price, amount, value, commission, commission_ccy, profit, created_at)
             VALUES
-            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """,
             (
                 int(user_id),
@@ -63,7 +62,6 @@ def record_trade(
                 float(commission or 0.0),
                 str(commission_ccy or ""),
                 profit,
-                now,
             ),
         )
         db.commit()
@@ -105,7 +103,6 @@ def upsert_position(
     lowest_price: float = 0.0,
     user_id: int = None,
 ) -> None:
-    now = int(time.time())
     if user_id is None:
         user_id = _get_user_id_from_strategy(strategy_id)
     with get_db_connection() as db:
@@ -115,16 +112,16 @@ def upsert_position(
             INSERT INTO qd_strategy_positions
             (user_id, strategy_id, symbol, side, size, entry_price, current_price, highest_price, lowest_price, updated_at)
             VALUES
-            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT(strategy_id, symbol, side) DO UPDATE SET
                 size = excluded.size,
                 entry_price = excluded.entry_price,
                 current_price = excluded.current_price,
                 highest_price = CASE WHEN excluded.highest_price > 0 THEN excluded.highest_price ELSE qd_strategy_positions.highest_price END,
                 lowest_price = CASE WHEN excluded.lowest_price > 0 THEN excluded.lowest_price ELSE qd_strategy_positions.lowest_price END,
-                updated_at = excluded.updated_at
+                updated_at = NOW()
             """,
-            (int(user_id), int(strategy_id), str(symbol), str(side), float(size or 0.0), float(entry_price or 0.0), float(current_price or 0.0), float(highest_price or 0.0), float(lowest_price or 0.0), now),
+            (int(user_id), int(strategy_id), str(symbol), str(side), float(size or 0.0), float(entry_price or 0.0), float(current_price or 0.0), float(highest_price or 0.0), float(lowest_price or 0.0)),
         )
         db.commit()
         cur.close()

@@ -2213,7 +2213,7 @@ class TradingExecutor:
                     """
                     INSERT INTO qd_strategy_notifications
                     (user_id, strategy_id, symbol, signal_type, channels, title, message, payload_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     """,
                     (
                         int(user_id),
@@ -2224,7 +2224,6 @@ class TradingExecutor:
                         str(title or ""),
                         str(message or ""),
                         json.dumps(payload or {}, ensure_ascii=False),
-                        int(now),
                     ),
                 )
                 db.commit()
@@ -2450,7 +2449,7 @@ class TradingExecutor:
                     VALUES
                     (%s, %s, %s, %s, %s, %s, %s, %s, %s,
                      %s, %s, %s, %s, %s, %s, %s,
-                     %s, %s, %s, %s)
+                     NOW(), NOW(), NULL, NULL)
                     """,
                     (
                         int(user_id),
@@ -2469,10 +2468,6 @@ class TradingExecutor:
                         10,
                         '',
                         json.dumps(payload, ensure_ascii=False),
-                        now,
-                        now,
-                        None,
-                        None,
                     ),
                 )
                 pending_id = cur.lastrowid
@@ -2510,10 +2505,10 @@ class TradingExecutor:
                     INSERT INTO qd_strategy_trades (
                         user_id, strategy_id, symbol, type, price, amount, value, commission, profit, created_at
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW()
                     )
                 """
-                cursor.execute(query, (user_id, strategy_id, symbol, type, price, amount, value, commission or 0, profit, int(time.time())))
+                cursor.execute(query, (user_id, strategy_id, symbol, type, price, amount, value, commission or 0, profit))
                 db.commit()
                 cursor.close()
         except Exception as e:
@@ -2547,17 +2542,17 @@ class TradingExecutor:
                     INSERT INTO qd_strategy_positions (
                         user_id, strategy_id, symbol, side, size, entry_price, current_price, highest_price, lowest_price, updated_at
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW()
                     ) ON CONFLICT(strategy_id, symbol, side) DO UPDATE SET
                         size = excluded.size,
                         entry_price = excluded.entry_price,
                         current_price = excluded.current_price,
                         highest_price = CASE WHEN excluded.highest_price > 0 THEN excluded.highest_price ELSE qd_strategy_positions.highest_price END,
                         lowest_price = CASE WHEN excluded.lowest_price > 0 THEN excluded.lowest_price ELSE qd_strategy_positions.lowest_price END,
-                        updated_at = excluded.updated_at
+                        updated_at = NOW()
                 """
                 cursor.execute(upsert_query, (
-                    user_id, strategy_id, symbol, side, size, entry_price, current_price, highest_price, lowest_price, int(time.time())
+                    user_id, strategy_id, symbol, side, size, entry_price, current_price, highest_price, lowest_price
                 ))
                 db.commit()
                 cursor.close()

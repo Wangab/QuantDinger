@@ -477,7 +477,6 @@ class PendingOrderWorker:
 
     def _mark_processing(self, order_id: int) -> bool:
         try:
-            now = int(time.time())
             with get_db_connection() as db:
                 cur = db.cursor()
                 # Only claim if still pending to avoid double-processing.
@@ -486,11 +485,11 @@ class PendingOrderWorker:
                     UPDATE pending_orders
                     SET status = 'processing',
                         attempts = COALESCE(attempts, 0) + 1,
-                        processed_at = %s,
-                        updated_at = %s
+                        processed_at = NOW(),
+                        updated_at = NOW()
                     WHERE id = %s AND status = 'pending'
                     """,
-                    (now, now, int(order_id)),
+                    (int(order_id),),
                 )
                 claimed = getattr(cur, "rowcount", None)
                 db.commit()
@@ -1922,36 +1921,34 @@ class PendingOrderWorker:
         avg_price: float = 0.0,
         executed_at: Optional[int] = None,
     ) -> None:
-        now = int(time.time())
         with get_db_connection() as db:
             cur = db.cursor()
+            # Use NOW() for timestamp fields; executed_at is set to NOW() if provided, else NULL
             cur.execute(
                 """
                 UPDATE pending_orders
                 SET status = 'sent',
                     last_error = %s,
                     dispatch_note = %s,
-                    sent_at = %s,
-                    executed_at = %s,
+                    sent_at = NOW(),
+                    executed_at = CASE WHEN %s THEN NOW() ELSE NULL END,
                     exchange_id = %s,
                     exchange_order_id = %s,
                     exchange_response_json = %s,
                     filled = %s,
                     avg_price = %s,
-                    updated_at = %s
+                    updated_at = NOW()
                 WHERE id = %s
                 """,
                 (
                     "",
                     str(note or ""),
-                    now,
-                    int(executed_at) if executed_at is not None else None,
+                    executed_at is not None,  # Boolean flag for CASE WHEN
                     str(exchange_id or ""),
                     str(exchange_order_id or ""),
                     str(exchange_response_json or ""),
                     float(filled or 0.0),
                     float(avg_price or 0.0),
-                    now,
                     int(order_id),
                 ),
             )
@@ -1959,7 +1956,6 @@ class PendingOrderWorker:
             cur.close()
 
     def _mark_failed(self, order_id: int, error: str) -> None:
-        now = int(time.time())
         with get_db_connection() as db:
             cur = db.cursor()
             cur.execute(
@@ -1967,16 +1963,15 @@ class PendingOrderWorker:
                 UPDATE pending_orders
                 SET status = 'failed',
                     last_error = %s,
-                    updated_at = %s
+                    updated_at = NOW()
                 WHERE id = %s
                 """,
-                (str(error or "failed"), now, int(order_id)),
+                (str(error or "failed"), int(order_id)),
             )
             db.commit()
             cur.close()
 
     def _mark_deferred(self, order_id: int, reason: str) -> None:
-        now = int(time.time())
         with get_db_connection() as db:
             cur = db.cursor()
             cur.execute(
@@ -1984,10 +1979,10 @@ class PendingOrderWorker:
                 UPDATE pending_orders
                 SET status = 'deferred',
                     last_error = %s,
-                    updated_at = %s
+                    updated_at = NOW()
                 WHERE id = %s
                 """,
-                (str(reason or "deferred"), now, int(order_id)),
+                (str(reason or "deferred"), int(order_id)),
             )
             db.commit()
             cur.close()

@@ -468,7 +468,7 @@ class SignalNotifier:
                     """
                     INSERT INTO qd_strategy_notifications
                     (user_id, strategy_id, symbol, signal_type, channels, title, message, payload_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     """,
                     (
                         int(user_id),
@@ -479,7 +479,6 @@ class SignalNotifier:
                         str(title or ""),
                         str(message or ""),
                         json.dumps(payload or {}, ensure_ascii=False),
-                        int(now),
                     ),
                 )
                 db.commit()
