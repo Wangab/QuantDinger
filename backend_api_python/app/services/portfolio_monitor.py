@@ -91,7 +91,7 @@ def _get_positions_for_monitor(position_ids: List[int] = None, user_id: int = No
                 placeholders = ','.join(['?' for _ in position_ids])
                 cur.execute(
                     f"""
-                    SELECT id, market, symbol, name, side, quantity, entry_price
+                    SELECT id, market, symbol, name, side, quantity, entry_price, group_name
                     FROM qd_manual_positions
                     WHERE user_id = ? AND id IN ({placeholders})
                     """,
@@ -100,7 +100,7 @@ def _get_positions_for_monitor(position_ids: List[int] = None, user_id: int = No
             else:
                 cur.execute(
                     """
-                    SELECT id, market, symbol, name, side, quantity, entry_price
+                    SELECT id, market, symbol, name, side, quantity, entry_price, group_name
                     FROM qd_manual_positions
                     WHERE user_id = ?
                     """,
@@ -115,7 +115,8 @@ def _get_positions_for_monitor(position_ids: List[int] = None, user_id: int = No
             symbol = row.get('symbol')
             entry_price = float(row.get('entry_price') or 0)
             quantity = float(row.get('quantity') or 0)
-            side = row.get('side') or 'long'
+            side = row.get('side') or 'long',
+            group_name = row.get('group_name')
             
             # Get current price (use realtime price API)
             current_price = 0
@@ -143,7 +144,8 @@ def _get_positions_for_monitor(position_ids: List[int] = None, user_id: int = No
                 'entry_price': entry_price,
                 'current_price': current_price,
                 'pnl': round(pnl, 2),
-                'pnl_percent': pnl_percent
+                'pnl_percent': pnl_percent,
+                'group_name': group_name
             })
         
         return positions
@@ -168,6 +170,7 @@ def _run_ai_analysis(positions: List[Dict[str, Any]], config: Dict[str, Any]) ->
             market = pos.get('market')
             symbol = pos.get('symbol')
             name = pos.get('name') or symbol
+            group_name = pos.get('group_name')
             
             if not market or not symbol:
                 continue
@@ -193,6 +196,7 @@ def _run_ai_analysis(positions: List[Dict[str, Any]], config: Dict[str, Any]) ->
                     'market': market,
                     'symbol': symbol,
                     'name': name,
+                    'group_name': group_name,
                     'entry_price': pos.get('entry_price'),
                     'current_price': pos.get('current_price'),
                     'pnl': pos.get('pnl'),
@@ -454,6 +458,7 @@ def _build_html_report(
         symbol = pa.get('symbol', '')
         name = pa.get('name', symbol)
         market = pa.get('market', '')
+        group_name = pa.get('group_name', '')
         
         if pa.get('error'):
             html += f'''
@@ -538,7 +543,7 @@ def _build_html_report(
             '''
         
         # Generate unique ID for collapsible sections (use symbol hash to avoid special chars)
-        section_id_base = hashlib.md5(f"{symbol}_{market}".encode()).hexdigest()[:8]
+        section_id_base = hashlib.md5(f"{symbol}_{market}_{group_name}".encode()).hexdigest()[:8]
         
         # Collapsible: Trader Analysis
         if trader_reasoning:
