@@ -1044,7 +1044,7 @@ export default {
       // Use strategy_stats for pie chart data (shows all strategies, not just those with positions)
       const stats = Array.isArray(this.summary.strategy_stats) ? this.summary.strategy_stats : []
       const raw = Array.isArray(this.summary.strategy_pnl_chart) ? this.summary.strategy_pnl_chart : []
-      
+
       // Prefer strategy_stats if available, fallback to strategy_pnl_chart
       let data = []
       if (stats.length > 0) {
