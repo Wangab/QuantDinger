@@ -203,17 +203,17 @@ export default {
       // Static footer config (local OSS build)
       menuFooterConfig: {
         contact: {
-          support_url: 'https://t.me/quantdinger',
-          feature_request_url: 'https://github.com/brokermr810/QuantDinger/issues',
-          email: 'brokermr810@gmail.com',
-          live_chat_url: 'https://t.me/quantdinger'
+          support_url: 'https://t.me/ngjason8',
+          feature_request_url: '',
+          email: 'support@sompay.xyz',
+          live_chat_url: 'https://t.me/ngjason8'
         },
         social_accounts: [
-          { name: 'GitHub', icon: 'github', url: 'https://github.com/brokermr810/QuantDinger' },
-          { name: 'X', icon: 'x', url: 'https://x.com/HenryCryption' },
-          { name: 'Discord', icon: 'discord', url: 'https://discord.gg/cn6HVE2KC' },
-          { name: 'Telegram', icon: 'telegram', url: 'https://t.me/quantdinger' },
-          { name: 'YouTube', icon: 'youtube', url: 'https://youtube.com/@quantdinger' }
+          { name: 'GitHub', icon: 'github', url: '' },
+          { name: 'X', icon: 'x', url: '' },
+          { name: 'Discord', icon: 'discord', url: '' },
+          { name: 'Telegram', icon: 'telegram', url: 'https://t.me/ngjason8' },
+          { name: 'YouTube', icon: 'youtube', url: '' }
         ],
         legal: {
           user_agreement: '',
