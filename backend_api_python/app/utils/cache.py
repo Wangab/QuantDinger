@@ -93,7 +93,7 @@ class CacheManager:
             logger.info("Redis cache connected")
         except Exception as e:
             # Fall back silently (keep startup logs clean in local mode).
-            logger.info(f"Redis is enabled but unavailable; using in-memory cache instead: {e}")
+            logger.warning(f"Redis is enabled but unavailable; using in-memory cache instead: {e}")
             self._client = MemoryCache()
             self._use_redis = False
     

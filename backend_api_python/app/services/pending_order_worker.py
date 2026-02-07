@@ -292,8 +292,10 @@ class PendingOrderWorker:
                             hold_side = str(p.get("holdSide") or "").lower()
                             try:
                                 total = float(p.get("total") or 0.0)
+                                ep = float(p.get("openPriceAvg") or 0.0)
                             except Exception:
                                 total = 0.0
+                                ep = 0.0
                             if not sym or abs(total) <= 0:
                                 continue
                             # Symbol is like BTCUSDT -> BTC/USDT best-effort
@@ -302,6 +304,7 @@ class PendingOrderWorker:
                                 hb_sym = f"{hb_sym[:-4]}/USDT"
                             side = "long" if hold_side == "long" else "short"
                             exch_size.setdefault(hb_sym, {"long": 0.0, "short": 0.0})[side] = abs(float(total))
+                            exch_entry_price.setdefault(hb_sym, {"long": 0.0, "short": 0.0})[side] = abs(float(ep))
 
                 elif isinstance(client, BybitClient) and market_type == "swap":
                     # Bybit linear positions

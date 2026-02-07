@@ -981,7 +981,7 @@ class TradingExecutor:
                                 signal_ts=signal_ts,
                                 current_positions=current_positions,
                                 trade_direction=trade_direction,
-                                leverage=leverage,
+                                leverage=int(leverage),
                                 initial_capital=initial_capital,
                                 market_type=market_type,
                                 market_category=market_category,
