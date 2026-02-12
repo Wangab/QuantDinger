@@ -4,9 +4,11 @@ User Management API Routes
 Provides endpoints for user CRUD operations, role management, etc.
 Only accessible by admin users.
 """
+import json
 from flask import Blueprint, request, jsonify, g
 from app.services.user_service import get_user_service
 from app.utils.auth import login_required, admin_required
+from app.utils.db import get_db_connection
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -748,4 +750,266 @@ def change_password():
         return jsonify({'code': 0, 'msg': str(e), 'data': None}), 400
     except Exception as e:
         logger.error(f"change_password failed: {e}")
+        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
+
+
+# ==================== System Overview (Admin) ====================
+
+def _safe_json_loads(s, default=None):
+    """Safely parse JSON string."""
+    if not s:
+        return default
+    if isinstance(s, dict):
+        return s
+    try:
+        return json.loads(s)
+    except Exception:
+        return default
+
+
+@user_bp.route('/system-strategies', methods=['GET'])
+@login_required
+@admin_required
+def get_system_strategies():
+    """
+    Get all strategies across the entire system (admin only).
+    Returns strategy details with user info, positions, PnL, indicators, etc.
+
+    Query params:
+        page: int (default 1)
+        page_size: int (default 20, max 100)
+        status: str (optional, filter by status: running/stopped/all)
+        search: str (optional, search by strategy name/symbol/username)
+    """
+    try:
+        page = request.args.get('page', 1, type=int)
+        page_size = request.args.get('page_size', 20, type=int)
+        status_filter = request.args.get('status', '', type=str).strip().lower()
+        search = request.args.get('search', '', type=str).strip()
+        page_size = min(100, max(1, page_size))
+        offset = (page - 1) * page_size
+
+        with get_db_connection() as db:
+            cur = db.cursor()
+
+            # Build WHERE clause
+            conditions = []
+            params = []
+
+            if status_filter and status_filter != 'all':
+                conditions.append("s.status = ?")
+                params.append(status_filter)
+
+            if search:
+                conditions.append(
+                    "(s.strategy_name ILIKE ? OR s.symbol ILIKE ? OR u.username ILIKE ? OR u.nickname ILIKE ?)"
+                )
+                like_val = f"%{search}%"
+                params.extend([like_val, like_val, like_val, like_val])
+
+            where_clause = ""
+            if conditions:
+                where_clause = "WHERE " + " AND ".join(conditions)
+
+            # Get total count
+            count_sql = f"""
+                SELECT COUNT(*) as cnt
+                FROM qd_strategies_trading s
+                LEFT JOIN qd_users u ON u.id = s.user_id
+                {where_clause}
+            """
+            cur.execute(count_sql, tuple(params))
+            total = cur.fetchone()['cnt']
+
+            # Get strategies with user info
+            query_sql = f"""
+                SELECT 
+                    s.id,
+                    s.user_id,
+                    s.strategy_name,
+                    s.strategy_type,
+                    s.market_category,
+                    s.execution_mode,
+                    s.status,
+                    s.symbol,
+                    s.timeframe,
+                    s.initial_capital,
+                    s.leverage,
+                    s.market_type,
+                    s.indicator_config,
+                    s.trading_config,
+                    s.exchange_config,
+                    s.decide_interval,
+                    s.created_at,
+                    s.updated_at,
+                    u.username,
+                    u.nickname
+                FROM qd_strategies_trading s
+                LEFT JOIN qd_users u ON u.id = s.user_id
+                {where_clause}
+                ORDER BY s.status DESC, s.updated_at DESC
+                LIMIT ? OFFSET ?
+            """
+            cur.execute(query_sql, tuple(params) + (page_size, offset))
+            strategies = cur.fetchall() or []
+
+            # Collect strategy IDs
+            strategy_ids = [s['id'] for s in strategies]
+
+            # Batch load positions for these strategies
+            positions_map = {}
+            if strategy_ids:
+                placeholders = ','.join(['?'] * len(strategy_ids))
+                cur.execute(
+                    f"""
+                    SELECT strategy_id, symbol, side, size, entry_price, current_price, 
+                           unrealized_pnl, pnl_percent, equity, updated_at
+                    FROM qd_strategy_positions
+                    WHERE strategy_id IN ({placeholders})
+                    ORDER BY strategy_id, updated_at DESC
+                    """,
+                    tuple(strategy_ids)
+                )
+                for pos in (cur.fetchall() or []):
+                    sid = pos['strategy_id']
+                    if sid not in positions_map:
+                        positions_map[sid] = []
+                    positions_map[sid].append(dict(pos))
+
+            # Batch load recent trade stats (realized PnL per strategy)
+            trade_stats_map = {}
+            if strategy_ids:
+                placeholders = ','.join(['?'] * len(strategy_ids))
+                cur.execute(
+                    f"""
+                    SELECT strategy_id, 
+                           COUNT(*) as trade_count, 
+                           COALESCE(SUM(profit), 0) as total_realized_pnl
+                    FROM qd_strategy_trades
+                    WHERE strategy_id IN ({placeholders})
+                    GROUP BY strategy_id
+                    """,
+                    tuple(strategy_ids)
+                )
+                for row in (cur.fetchall() or []):
+                    trade_stats_map[row['strategy_id']] = {
+                        'trade_count': row['trade_count'],
+                        'total_realized_pnl': float(row['total_realized_pnl'] or 0)
+                    }
+
+            cur.close()
+
+        # Build response
+        items = []
+        for s in strategies:
+            sid = s['id']
+            indicator_config = _safe_json_loads(s.get('indicator_config'), {})
+            trading_config = _safe_json_loads(s.get('trading_config'), {})
+            exchange_config = _safe_json_loads(s.get('exchange_config'), {})
+
+            # Extract indicator name
+            indicator_name = ''
+            if isinstance(indicator_config, dict):
+                indicator_name = indicator_config.get('indicator_name') or indicator_config.get('name') or ''
+
+            # Extract exchange name
+            exchange_name = ''
+            if isinstance(exchange_config, dict):
+                exchange_name = exchange_config.get('exchange_id') or exchange_config.get('exchange') or ''
+
+            # Positions data
+            positions = positions_map.get(sid, [])
+            total_unrealized_pnl = sum(float(p.get('unrealized_pnl') or 0) for p in positions)
+            total_equity = sum(float(p.get('equity') or 0) for p in positions)
+            position_count = len(positions)
+
+            # Trade stats
+            trade_stats = trade_stats_map.get(sid, {'trade_count': 0, 'total_realized_pnl': 0})
+            total_realized_pnl = trade_stats['total_realized_pnl']
+            trade_count = trade_stats['trade_count']
+
+            # Calculate total PnL and ROI
+            initial_capital = float(s.get('initial_capital') or 0)
+            total_pnl = total_unrealized_pnl + total_realized_pnl
+            roi = (total_pnl / initial_capital * 100) if initial_capital > 0 else 0
+
+            # Cross-sectional info
+            cs_type = ''
+            symbol_list = []
+            if isinstance(trading_config, dict):
+                cs_type = trading_config.get('cs_strategy_type') or 'single'
+                symbol_list = trading_config.get('symbol_list') or []
+
+            # Format timestamps
+            created_at = s.get('created_at')
+            updated_at = s.get('updated_at')
+            if hasattr(created_at, 'isoformat'):
+                created_at = created_at.isoformat()
+            if hasattr(updated_at, 'isoformat'):
+                updated_at = updated_at.isoformat()
+
+            # Format position timestamps
+            for p in positions:
+                if hasattr(p.get('updated_at'), 'isoformat'):
+                    p['updated_at'] = p['updated_at'].isoformat()
+
+            items.append({
+                'id': sid,
+                'user_id': s['user_id'],
+                'username': s.get('username') or '',
+                'nickname': s.get('nickname') or '',
+                'strategy_name': s.get('strategy_name') or '',
+                'strategy_type': s.get('strategy_type') or '',
+                'cs_strategy_type': cs_type,
+                'market_category': s.get('market_category') or '',
+                'execution_mode': s.get('execution_mode') or '',
+                'status': s.get('status') or 'stopped',
+                'symbol': s.get('symbol') or '',
+                'symbol_list': symbol_list,
+                'timeframe': s.get('timeframe') or '',
+                'initial_capital': initial_capital,
+                'leverage': int(s.get('leverage') or 1),
+                'market_type': s.get('market_type') or '',
+                'indicator_name': indicator_name,
+                'exchange_name': exchange_name,
+                'decide_interval': s.get('decide_interval') or 300,
+                'position_count': position_count,
+                'total_unrealized_pnl': round(total_unrealized_pnl, 4),
+                'total_realized_pnl': round(total_realized_pnl, 4),
+                'total_pnl': round(total_pnl, 4),
+                'total_equity': round(total_equity, 4),
+                'roi': round(roi, 2),
+                'trade_count': trade_count,
+                'positions': positions,
+                'created_at': created_at,
+                'updated_at': updated_at
+            })
+
+        # Compute summary stats
+        all_running = [i for i in items if i['status'] == 'running']
+        total_capital = sum(i['initial_capital'] for i in items)
+        total_system_pnl = sum(i['total_pnl'] for i in items)
+        total_running = len(all_running)
+
+        return jsonify({
+            'code': 1,
+            'msg': 'success',
+            'data': {
+                'items': items,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'summary': {
+                    'total_strategies': total,
+                    'running_strategies': total_running,
+                    'total_capital': round(total_capital, 2),
+                    'total_pnl': round(total_system_pnl, 4),
+                    'total_roi': round((total_system_pnl / total_capital * 100) if total_capital > 0 else 0, 2)
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"get_system_strategies failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500

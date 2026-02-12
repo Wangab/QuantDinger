@@ -8,113 +8,289 @@
       <p class="page-desc">{{ $t('userManage.description') || 'Manage system users, roles and permissions' }}</p>
     </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <a-button type="primary" @click="showCreateModal">
-          <a-icon type="user-add" />
-          {{ $t('userManage.createUser') || 'Create User' }}
-        </a-button>
-        <a-button @click="loadUsers">
-          <a-icon type="reload" />
-          {{ $t('common.refresh') || 'Refresh' }}
-        </a-button>
-      </div>
-      <div class="toolbar-right">
-        <a-input-search
-          v-model="searchKeyword"
-          :placeholder="$t('userManage.searchPlaceholder') || 'Search by username/email'"
-          style="width: 280px"
-          allowClear
-          @search="handleSearch"
-          @pressEnter="handleSearch"
-        />
-      </div>
-    </div>
+    <!-- Tabs -->
+    <a-tabs v-model="activeTab" @change="handleTabChange" class="manage-tabs">
+      <!-- Tab 1: User Management -->
+      <a-tab-pane key="users" :tab="$t('userManage.tabUsers') || 'User Management'">
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <a-button type="primary" @click="showCreateModal">
+              <a-icon type="user-add" />
+              {{ $t('userManage.createUser') || 'Create User' }}
+            </a-button>
+            <a-button @click="loadUsers">
+              <a-icon type="reload" />
+              {{ $t('common.refresh') || 'Refresh' }}
+            </a-button>
+          </div>
+          <div class="toolbar-right">
+            <a-input-search
+              v-model="searchKeyword"
+              :placeholder="$t('userManage.searchPlaceholder') || 'Search by username/email'"
+              style="width: 280px"
+              allowClear
+              @search="handleSearch"
+              @pressEnter="handleSearch"
+            />
+          </div>
+        </div>
 
-    <!-- User Table -->
-    <a-card :bordered="false" class="user-table-card">
-      <a-table
-        :columns="columns"
-        :dataSource="users"
-        :loading="loading"
-        :pagination="pagination"
-        :rowKey="record => record.id"
-        @change="handleTableChange"
-      >
-        <!-- Status Column -->
-        <template slot="status" slot-scope="text">
-          <a-tag :color="text === 'active' ? 'green' : 'red'">
-            {{ text === 'active' ? ($t('userManage.active') || 'Active') : ($t('userManage.disabled') || 'Disabled') }}
-          </a-tag>
-        </template>
+        <!-- User Table -->
+        <a-card :bordered="false" class="user-table-card">
+          <a-table
+            :columns="columns"
+            :dataSource="users"
+            :loading="loading"
+            :pagination="pagination"
+            :rowKey="record => record.id"
+            @change="handleTableChange"
+          >
+            <!-- Status Column -->
+            <template slot="status" slot-scope="text">
+              <a-tag :color="text === 'active' ? 'green' : 'red'">
+                {{ text === 'active' ? ($t('userManage.active') || 'Active') : ($t('userManage.disabled') || 'Disabled') }}
+              </a-tag>
+            </template>
 
-        <!-- Role Column -->
-        <template slot="role" slot-scope="text">
-          <a-tag :color="getRoleColor(text)">
-            {{ getRoleLabel(text) }}
-          </a-tag>
-        </template>
+            <!-- Role Column -->
+            <template slot="role" slot-scope="text">
+              <a-tag :color="getRoleColor(text)">
+                {{ getRoleLabel(text) }}
+              </a-tag>
+            </template>
 
-        <!-- Last Login Column -->
-        <template slot="last_login_at" slot-scope="text">
-          <span v-if="text">{{ formatTime(text) }}</span>
-          <span v-else class="text-muted">{{ $t('userManage.neverLogin') || 'Never' }}</span>
-        </template>
+            <!-- Last Login Column -->
+            <template slot="last_login_at" slot-scope="text">
+              <span v-if="text">{{ formatTime(text) }}</span>
+              <span v-else class="text-muted">{{ $t('userManage.neverLogin') || 'Never' }}</span>
+            </template>
 
-        <!-- Credits Column -->
-        <template slot="credits" slot-scope="text">
-          <span class="credits-value">{{ formatCredits(text) }}</span>
-        </template>
+            <!-- Credits Column -->
+            <template slot="credits" slot-scope="text">
+              <span class="credits-value">{{ formatCredits(text) }}</span>
+            </template>
 
-        <!-- VIP Column -->
-        <template slot="vip_expires_at" slot-scope="text">
-          <template v-if="text && isVipActive(text)">
-            <a-tag color="gold">
-              <a-icon type="crown" />
-              {{ formatDate(text) }}
-            </a-tag>
-          </template>
-          <span v-else class="text-muted">-</span>
-        </template>
+            <!-- VIP Column -->
+            <template slot="vip_expires_at" slot-scope="text">
+              <template v-if="text && isVipActive(text)">
+                <a-tag color="gold">
+                  <a-icon type="crown" />
+                  {{ formatDate(text) }}
+                </a-tag>
+              </template>
+              <span v-else class="text-muted">-</span>
+            </template>
 
-        <!-- Actions Column -->
-        <template slot="action" slot-scope="text, record">
-          <a-space>
-            <a-tooltip :title="$t('common.edit') || 'Edit'">
-              <a-button type="link" size="small" @click="showEditModal(record)">
-                <a-icon type="edit" />
-              </a-button>
-            </a-tooltip>
-            <a-tooltip :title="$t('userManage.adjustCredits') || 'Adjust Credits'">
-              <a-button type="link" size="small" @click="showCreditsModal(record)">
-                <a-icon type="wallet" style="color: #722ed1" />
-              </a-button>
-            </a-tooltip>
-            <a-tooltip :title="$t('userManage.setVip') || 'Set VIP'">
-              <a-button type="link" size="small" @click="showVipModal(record)">
-                <a-icon type="crown" style="color: #faad14" />
-              </a-button>
-            </a-tooltip>
-            <a-tooltip :title="$t('userManage.resetPassword') || 'Reset Password'">
-              <a-button type="link" size="small" @click="showResetPasswordModal(record)">
-                <a-icon type="key" />
-              </a-button>
-            </a-tooltip>
-            <a-tooltip :title="$t('common.delete') || 'Delete'">
-              <a-popconfirm
-                :title="$t('userManage.confirmDelete') || 'Are you sure to delete this user?'"
-                @confirm="handleDelete(record.id)"
-              >
-                <a-button type="link" size="small" :disabled="record.id === currentUserId">
-                  <a-icon type="delete" style="color: #ff4d4f" />
-                </a-button>
-              </a-popconfirm>
-            </a-tooltip>
-          </a-space>
-        </template>
-      </a-table>
-    </a-card>
+            <!-- Actions Column -->
+            <template slot="action" slot-scope="text, record">
+              <a-space>
+                <a-tooltip :title="$t('common.edit') || 'Edit'">
+                  <a-button type="link" size="small" @click="showEditModal(record)">
+                    <a-icon type="edit" />
+                  </a-button>
+                </a-tooltip>
+                <a-tooltip :title="$t('userManage.adjustCredits') || 'Adjust Credits'">
+                  <a-button type="link" size="small" @click="showCreditsModal(record)">
+                    <a-icon type="wallet" style="color: #722ed1" />
+                  </a-button>
+                </a-tooltip>
+                <a-tooltip :title="$t('userManage.setVip') || 'Set VIP'">
+                  <a-button type="link" size="small" @click="showVipModal(record)">
+                    <a-icon type="crown" style="color: #faad14" />
+                  </a-button>
+                </a-tooltip>
+                <a-tooltip :title="$t('userManage.resetPassword') || 'Reset Password'">
+                  <a-button type="link" size="small" @click="showResetPasswordModal(record)">
+                    <a-icon type="key" />
+                  </a-button>
+                </a-tooltip>
+                <a-tooltip :title="$t('common.delete') || 'Delete'">
+                  <a-popconfirm
+                    :title="$t('userManage.confirmDelete') || 'Are you sure to delete this user?'"
+                    @confirm="handleDelete(record.id)"
+                  >
+                    <a-button type="link" size="small" :disabled="record.id === currentUserId">
+                      <a-icon type="delete" style="color: #ff4d4f" />
+                    </a-button>
+                  </a-popconfirm>
+                </a-tooltip>
+              </a-space>
+            </template>
+          </a-table>
+        </a-card>
+      </a-tab-pane>
+
+      <!-- Tab 2: System Strategy Overview -->
+      <a-tab-pane key="strategies" :tab="$t('systemOverview.tabTitle') || 'System Overview'">
+        <!-- Summary Cards -->
+        <div class="summary-cards" v-if="strategySummary">
+          <div class="summary-card">
+            <div class="summary-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+              <a-icon type="fund" />
+            </div>
+            <div class="summary-info">
+              <div class="summary-value">{{ strategySummary.total_strategies || 0 }}</div>
+              <div class="summary-label">{{ $t('systemOverview.totalStrategies') || 'Total Strategies' }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon" style="background: linear-gradient(135deg, #11998e, #38ef7d)">
+              <a-icon type="play-circle" />
+            </div>
+            <div class="summary-info">
+              <div class="summary-value">{{ strategySummary.running_strategies || 0 }}</div>
+              <div class="summary-label">{{ $t('systemOverview.runningStrategies') || 'Running' }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+              <a-icon type="dollar" />
+            </div>
+            <div class="summary-info">
+              <div class="summary-value">{{ formatNumber(strategySummary.total_capital) }}</div>
+              <div class="summary-label">{{ $t('systemOverview.totalCapital') || 'Total Capital' }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon" :style="{ background: (strategySummary.total_pnl || 0) >= 0 ? 'linear-gradient(135deg, #11998e, #38ef7d)' : 'linear-gradient(135deg, #ff416c, #ff4b2b)' }">
+              <a-icon type="rise" />
+            </div>
+            <div class="summary-info">
+              <div class="summary-value" :class="(strategySummary.total_pnl || 0) >= 0 ? 'text-profit' : 'text-loss'">
+                {{ formatPnl(strategySummary.total_pnl) }}
+                <span class="roi-badge">{{ strategySummary.total_roi || 0 }}%</span>
+              </div>
+              <div class="summary-label">{{ $t('systemOverview.totalPnl') || 'Total PnL' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Strategy Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <a-button @click="loadSystemStrategies">
+              <a-icon type="reload" />
+              {{ $t('common.refresh') || 'Refresh' }}
+            </a-button>
+            <a-select v-model="strategyStatusFilter" style="width: 140px" @change="handleStrategyFilterChange">
+              <a-select-option value="all">{{ $t('systemOverview.filterAll') || 'All Status' }}</a-select-option>
+              <a-select-option value="running">{{ $t('systemOverview.filterRunning') || 'Running' }}</a-select-option>
+              <a-select-option value="stopped">{{ $t('systemOverview.filterStopped') || 'Stopped' }}</a-select-option>
+            </a-select>
+          </div>
+          <div class="toolbar-right">
+            <a-input-search
+              v-model="strategySearchKeyword"
+              :placeholder="$t('systemOverview.searchPlaceholder') || 'Search strategy/symbol/user'"
+              style="width: 280px"
+              allowClear
+              @search="handleStrategySearch"
+              @pressEnter="handleStrategySearch"
+            />
+          </div>
+        </div>
+
+        <!-- Strategy Table -->
+        <a-card :bordered="false" class="user-table-card">
+          <a-table
+            :columns="strategyColumns"
+            :dataSource="systemStrategies"
+            :loading="strategyLoading"
+            :pagination="strategyPagination"
+            :rowKey="record => record.id"
+            :scroll="{ x: 1600 }"
+            @change="handleStrategyTableChange"
+          >
+            <!-- Strategy Status -->
+            <template slot="strategyStatus" slot-scope="text">
+              <a-badge :status="text === 'running' ? 'processing' : 'default'" />
+              <a-tag :color="text === 'running' ? 'green' : 'default'" size="small">
+                {{ text === 'running' ? ($t('systemOverview.running') || 'Running') : ($t('systemOverview.stopped') || 'Stopped') }}
+              </a-tag>
+            </template>
+
+            <!-- User Column -->
+            <template slot="userInfo" slot-scope="text, record">
+              <span class="user-cell">
+                <a-icon type="user" style="margin-right: 4px; color: #1890ff" />
+                {{ record.nickname || record.username || '-' }}
+              </span>
+            </template>
+
+            <!-- Symbol Column -->
+            <template slot="symbolInfo" slot-scope="text, record">
+              <div>
+                <span class="symbol-text">{{ record.symbol || '-' }}</span>
+                <a-tag v-if="record.cs_strategy_type === 'cross_sectional'" color="purple" size="small" style="margin-left: 4px">CS</a-tag>
+              </div>
+              <div v-if="record.cs_strategy_type === 'cross_sectional' && record.symbol_list && record.symbol_list.length" class="symbol-count text-muted">
+                {{ record.symbol_list.length }} {{ $t('systemOverview.symbols') || 'symbols' }}
+              </div>
+            </template>
+
+            <!-- Capital Column -->
+            <template slot="capitalInfo" slot-scope="text">
+              <span>{{ formatNumber(text) }}</span>
+            </template>
+
+            <!-- PnL Column -->
+            <template slot="pnlInfo" slot-scope="text, record">
+              <div :class="record.total_pnl >= 0 ? 'text-profit' : 'text-loss'">
+                <span class="pnl-value">{{ formatPnl(record.total_pnl) }}</span>
+                <span class="roi-text">({{ record.roi >= 0 ? '+' : '' }}{{ record.roi }}%)</span>
+              </div>
+              <div class="pnl-detail text-muted">
+                <span>{{ $t('systemOverview.realized') || 'Real' }}: {{ formatPnl(record.total_realized_pnl) }}</span>
+                <span style="margin-left: 8px">{{ $t('systemOverview.unrealized') || 'Unreal' }}: {{ formatPnl(record.total_unrealized_pnl) }}</span>
+              </div>
+            </template>
+
+            <!-- Positions Column -->
+            <template slot="positionInfo" slot-scope="text, record">
+              <a-badge :count="record.position_count" :numberStyle="{ backgroundColor: record.position_count > 0 ? '#52c41a' : '#d9d9d9' }" />
+            </template>
+
+            <!-- Trades Column -->
+            <template slot="tradeInfo" slot-scope="text">
+              <span>{{ text || 0 }}</span>
+            </template>
+
+            <!-- Indicator Column -->
+            <template slot="indicatorInfo" slot-scope="text">
+              <a-tooltip v-if="text" :title="text">
+                <span class="indicator-name">{{ truncate(text, 16) }}</span>
+              </a-tooltip>
+              <span v-else class="text-muted">-</span>
+            </template>
+
+            <!-- Exchange Column -->
+            <template slot="exchangeInfo" slot-scope="text">
+              <span v-if="text" class="exchange-name">{{ text }}</span>
+              <span v-else class="text-muted">-</span>
+            </template>
+
+            <!-- Timeframe Column -->
+            <template slot="timeframeInfo" slot-scope="text">
+              <a-tag v-if="text" size="small">{{ text }}</a-tag>
+              <span v-else class="text-muted">-</span>
+            </template>
+
+            <!-- Leverage Column -->
+            <template slot="leverageInfo" slot-scope="text">
+              <span v-if="text > 1" style="color: #fa8c16; font-weight: 600">{{ text }}x</span>
+              <span v-else>{{ text || 1 }}x</span>
+            </template>
+
+            <!-- Created At Column -->
+            <template slot="createdAtInfo" slot-scope="text">
+              <span v-if="text">{{ formatTime(text) }}</span>
+              <span v-else class="text-muted">-</span>
+            </template>
+          </a-table>
+        </a-card>
+      </a-tab-pane>
+    </a-tabs>
 
     <!-- Create/Edit User Modal -->
     <a-modal
@@ -301,7 +477,7 @@
 </template>
 
 <script>
-import { getUserList, createUser, updateUser, deleteUser, resetUserPassword, getRoles, setUserCredits, setUserVip } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, resetUserPassword, getRoles, setUserCredits, setUserVip, getSystemStrategies } from '@/api/user'
 import { baseMixin } from '@/store/app-mixin'
 import { mapGetters } from 'vuex'
 
@@ -310,6 +486,7 @@ export default {
   mixins: [baseMixin],
   data () {
     return {
+      activeTab: 'users',
       loading: false,
       users: [],
       roles: [],
@@ -340,7 +517,19 @@ export default {
       vipEditingUser: null,
       vipDays: 30,
       vipCustomDate: null,
-      vipRemark: ''
+      vipRemark: '',
+      // System Strategy Overview
+      strategyLoading: false,
+      systemStrategies: [],
+      strategySummary: null,
+      strategyStatusFilter: 'all',
+      strategySearchKeyword: '',
+      strategyPagination: {
+        current: 1,
+        pageSize: 20,
+        total: 0
+      },
+      strategiesLoaded: false
     }
   },
   computed: {
@@ -410,6 +599,99 @@ export default {
           scopedSlots: { customRender: 'action' }
         }
       ]
+    },
+    strategyColumns () {
+      return [
+        {
+          title: 'ID',
+          dataIndex: 'id',
+          width: 60,
+          fixed: 'left'
+        },
+        {
+          title: this.$t('systemOverview.colUser') || 'User',
+          dataIndex: 'username',
+          width: 110,
+          fixed: 'left',
+          scopedSlots: { customRender: 'userInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colStrategy') || 'Strategy',
+          dataIndex: 'strategy_name',
+          width: 160,
+          ellipsis: true
+        },
+        {
+          title: this.$t('systemOverview.colStatus') || 'Status',
+          dataIndex: 'status',
+          width: 100,
+          scopedSlots: { customRender: 'strategyStatus' }
+        },
+        {
+          title: this.$t('systemOverview.colSymbol') || 'Symbol',
+          dataIndex: 'symbol',
+          width: 140,
+          scopedSlots: { customRender: 'symbolInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colCapital') || 'Capital',
+          dataIndex: 'initial_capital',
+          width: 110,
+          scopedSlots: { customRender: 'capitalInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colPnl') || 'PnL / ROI',
+          dataIndex: 'total_pnl',
+          width: 200,
+          scopedSlots: { customRender: 'pnlInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colPositions') || 'Pos',
+          dataIndex: 'position_count',
+          width: 70,
+          align: 'center',
+          scopedSlots: { customRender: 'positionInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colTrades') || 'Trades',
+          dataIndex: 'trade_count',
+          width: 80,
+          align: 'center',
+          scopedSlots: { customRender: 'tradeInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colIndicator') || 'Indicator',
+          dataIndex: 'indicator_name',
+          width: 130,
+          scopedSlots: { customRender: 'indicatorInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colExchange') || 'Exchange',
+          dataIndex: 'exchange_name',
+          width: 100,
+          scopedSlots: { customRender: 'exchangeInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colTimeframe') || 'TF',
+          dataIndex: 'timeframe',
+          width: 70,
+          align: 'center',
+          scopedSlots: { customRender: 'timeframeInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colLeverage') || 'Lev',
+          dataIndex: 'leverage',
+          width: 70,
+          align: 'center',
+          scopedSlots: { customRender: 'leverageInfo' }
+        },
+        {
+          title: this.$t('systemOverview.colCreatedAt') || 'Created',
+          dataIndex: 'created_at',
+          width: 150,
+          scopedSlots: { customRender: 'createdAtInfo' }
+        }
+      ]
     }
   },
   beforeCreate () {
@@ -421,6 +703,72 @@ export default {
     this.loadRoles()
   },
   methods: {
+    handleTabChange (key) {
+      if (key === 'strategies' && !this.strategiesLoaded) {
+        this.loadSystemStrategies()
+      }
+    },
+
+    // ==================== System Strategy Overview ====================
+    async loadSystemStrategies () {
+      this.strategyLoading = true
+      try {
+        const res = await getSystemStrategies({
+          page: this.strategyPagination.current,
+          page_size: this.strategyPagination.pageSize,
+          status: this.strategyStatusFilter === 'all' ? '' : this.strategyStatusFilter,
+          search: this.strategySearchKeyword || ''
+        })
+        if (res.code === 1) {
+          this.systemStrategies = res.data.items || []
+          this.strategyPagination.total = res.data.total || 0
+          this.strategySummary = res.data.summary || {}
+          this.strategiesLoaded = true
+        } else {
+          this.$message.error(res.msg || 'Failed to load strategies')
+        }
+      } catch (error) {
+        console.error('Failed to load system strategies:', error)
+        this.$message.error('Failed to load system strategies')
+      } finally {
+        this.strategyLoading = false
+      }
+    },
+
+    handleStrategySearch () {
+      this.strategyPagination.current = 1
+      this.loadSystemStrategies()
+    },
+
+    handleStrategyFilterChange () {
+      this.strategyPagination.current = 1
+      this.loadSystemStrategies()
+    },
+
+    handleStrategyTableChange (pagination) {
+      this.strategyPagination.current = pagination.current
+      this.strategyPagination.pageSize = pagination.pageSize
+      this.loadSystemStrategies()
+    },
+
+    formatNumber (num) {
+      if (!num && num !== 0) return '0'
+      return Number(num).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+    },
+
+    formatPnl (pnl) {
+      if (!pnl && pnl !== 0) return '0'
+      const val = Number(pnl)
+      const prefix = val >= 0 ? '+' : ''
+      return prefix + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+    },
+
+    truncate (str, maxLen) {
+      if (!str) return ''
+      return str.length > maxLen ? str.substring(0, maxLen) + '...' : str
+    },
+
+    // ==================== User Management ====================
     async loadUsers () {
       this.loading = true
       try {
@@ -729,6 +1077,78 @@ export default {
     }
   }
 
+  .manage-tabs {
+    /deep/ .ant-tabs-bar {
+      margin-bottom: 20px;
+    }
+  }
+
+  // Summary Cards
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+
+    .summary-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .summary-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+
+        .anticon {
+          font-size: 22px;
+          color: #fff;
+        }
+      }
+
+      .summary-info {
+        flex: 1;
+        min-width: 0;
+
+        .summary-value {
+          font-size: 22px;
+          font-weight: 700;
+          color: #1e293b;
+          line-height: 1.3;
+
+          .roi-badge {
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: 6px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.04);
+          }
+        }
+
+        .summary-label {
+          font-size: 13px;
+          color: #94a3b8;
+          margin-top: 2px;
+        }
+      }
+    }
+  }
+
   .toolbar {
     margin-bottom: 16px;
     display: flex;
@@ -755,6 +1175,54 @@ export default {
     }
   }
 
+  // PnL colors
+  .text-profit {
+    color: #52c41a;
+    font-weight: 600;
+  }
+
+  .text-loss {
+    color: #ff4d4f;
+    font-weight: 600;
+  }
+
+  .pnl-value {
+    font-size: 14px;
+  }
+
+  .roi-text {
+    font-size: 12px;
+    margin-left: 4px;
+  }
+
+  .pnl-detail {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .symbol-text {
+    font-weight: 500;
+  }
+
+  .symbol-count {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .user-cell {
+    font-size: 13px;
+  }
+
+  .indicator-name {
+    color: #722ed1;
+    font-size: 12px;
+  }
+
+  .exchange-name {
+    font-size: 12px;
+    text-transform: capitalize;
+  }
+
   // Dark theme
   &.theme-dark {
     background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
@@ -765,6 +1233,39 @@ export default {
       }
       .page-desc {
         color: #8b949e;
+      }
+    }
+
+    .manage-tabs {
+      /deep/ .ant-tabs-bar {
+        border-bottom-color: #30363d;
+      }
+      /deep/ .ant-tabs-tab {
+        color: #8b949e;
+        &:hover {
+          color: #c9d1d9;
+        }
+      }
+      /deep/ .ant-tabs-tab-active {
+        color: @primary-color;
+      }
+    }
+
+    .summary-cards .summary-card {
+      background: #1e222d;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+
+      .summary-info {
+        .summary-value {
+          color: #e0e6ed;
+
+          .roi-badge {
+            background: rgba(255, 255, 255, 0.08);
+          }
+        }
+        .summary-label {
+          color: #6e7681;
+        }
       }
     }
 
@@ -835,6 +1336,19 @@ export default {
         color: #999;
       }
     }
+  }
+}
+
+// Responsive
+@media (max-width: 1200px) {
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .summary-cards {
+    grid-template-columns: 1fr !important;
   }
 }
 </style>

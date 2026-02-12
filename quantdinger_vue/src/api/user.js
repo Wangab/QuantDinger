@@ -208,3 +208,15 @@ export function getUserCreditsLog (params) {
     params
   })
 }
+
+/**
+ * Get system-wide strategy overview (admin only)
+ * @param {Object} params - { page, page_size, status, search }
+ */
+export function getSystemStrategies (params) {
+  return request({
+    url: '/api/users/system-strategies',
+    method: 'get',
+    params
+  })
+}
