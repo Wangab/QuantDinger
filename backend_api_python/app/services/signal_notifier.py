@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
+from app.services.telegram_service import TelegramService
 from app.utils.db import get_db_connection
 from app.utils.logger import get_logger
 
@@ -666,23 +667,26 @@ class SignalNotifier:
             return False, "missing_telegram_bot_token (请在个人中心配置 Telegram Bot Token)"
         if not chat_id:
             return False, "missing_telegram_chat_id"
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        # url = f"https://api.telegram.org/bot{token}/sendMessage"
         try:
-            data: Dict[str, Any] = {
-                "chat_id": chat_id,
-                "text": str(text or "")[:3900],
-                "disable_web_page_preview": True,
-            }
+            # data: Dict[str, Any] = {
+            #     "chat_id": chat_id,
+            #     "text": str(text or "")[:3900],
+            #     "disable_web_page_preview": True,
+            # }
+            p_mode = None
             if (parse_mode or "").strip():
-                data["parse_mode"] = str(parse_mode).strip()
-            resp = requests.post(
-                url,
-                data=data,
-                timeout=self.timeout_sec,
-            )
-            if 200 <= resp.status_code < 300:
-                return True, ""
-            return False, f"http_{resp.status_code}:{(resp.text or '')[:300]}"
+                p_mode = str(parse_mode).strip()
+                # data["parse_mode"] = str(parse_mode).strip()
+            # resp = requests.post(
+            #     url,
+            #     data=data,
+            #     timeout=self.timeout_sec,
+            # )
+            # if 200 <= resp.status_code < 300:
+            #     return True, ""
+            # return False, f"http_{resp.status_code}:{(resp.text or '')[:300]}"
+            TelegramService(token_override).send_message(chat_id, str(text or "")[:3900], p_mode)
         except Exception as e:
             logger.error('telegram.error', traceback=traceback.format_exc())
             return False, str(e)
