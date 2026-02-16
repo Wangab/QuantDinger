@@ -626,9 +626,6 @@ def test_notification_settings():
         discord_webhook: str (optional)
     """
     try:
-        import json
-        from app.utils.db import get_db_connection
-
         user_id = getattr(g, 'user_id', None)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
@@ -671,7 +668,7 @@ def test_notification_settings():
         })
     except Exception as e:
         logger.error(f"update_notification_settings test: {e}")
-        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
+        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 200
 
 
 @user_bp.route('/notification-settings', methods=['PUT'])

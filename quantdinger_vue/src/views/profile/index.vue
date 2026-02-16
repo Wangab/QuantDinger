@@ -126,7 +126,8 @@
                 </div>
                 <div class="referral-hint" v-if="referralData.register_bonus > 0">
                   <a-icon type="gift" />
-                  <span>{{ $t('profile.referral.newUserBonus') || '新用户注册获得' }} {{ referralData.register_bonus }} {{ $t('profile.credits.unit') || '积分' }}</span>
+                  <span>{{ $t('profile.referral.newUserBonus') || '新用户注册获得' }} {{ referralData.register_bonus }} {{ $t('profile.credits.unit') || '积分'
+                    }}</span>
                 </div>
               </div>
             </a-card>
@@ -158,7 +159,8 @@
                     disabled
                   >
                     <a-icon slot="prefix" type="mail" />
-                    <a-tooltip slot="suffix" :title="$t('profile.emailCannotChange') || 'Email cannot be changed after registration'">
+                    <a-tooltip slot="suffix"
+                               :title="$t('profile.emailCannotChange') || 'Email cannot be changed after registration'">
                       <a-icon type="info-circle" style="color: rgba(0,0,0,.45)" />
                     </a-tooltip>
                   </a-input>
@@ -244,7 +246,8 @@
                 </a-form-item>
 
                 <a-form-item>
-                  <a-button type="primary" :loading="changingPassword" @click="handleChangePassword" :disabled="!profile.email">
+                  <a-button type="primary" :loading="changingPassword" @click="handleChangePassword"
+                            :disabled="!profile.email">
                     <a-icon type="key" />
                     {{ $t('profile.changePassword') || 'Change Password' }}
                   </a-button>
@@ -303,34 +306,40 @@
                       <a-row :gutter="16">
                         <a-col :span="8">
                           <a-checkbox value="browser">
-                            <a-icon type="bell" /> {{ $t('profile.notifications.browser') || '站内通知' }}
+                            <a-icon type="bell" />
+                            {{ $t('profile.notifications.browser') || '站内通知' }}
                           </a-checkbox>
                         </a-col>
                         <a-col :span="8">
                           <a-checkbox value="telegram">
-                            <a-icon type="send" /> Telegram
+                            <a-icon type="send" />
+                            Telegram
                           </a-checkbox>
                         </a-col>
                         <a-col :span="8">
                           <a-checkbox value="email">
-                            <a-icon type="mail" /> {{ $t('profile.notifications.email') || '邮件' }}
+                            <a-icon type="mail" />
+                            {{ $t('profile.notifications.email') || '邮件' }}
                           </a-checkbox>
                         </a-col>
                       </a-row>
                       <a-row :gutter="16" style="margin-top: 8px">
                         <a-col :span="8">
                           <a-checkbox value="phone">
-                            <a-icon type="phone" /> {{ $t('profile.notifications.phone') || '短信' }}
+                            <a-icon type="phone" />
+                            {{ $t('profile.notifications.phone') || '短信' }}
                           </a-checkbox>
                         </a-col>
                         <a-col :span="8">
                           <a-checkbox value="discord">
-                            <a-icon type="message" /> Discord
+                            <a-icon type="message" />
+                            Discord
                           </a-checkbox>
                         </a-col>
                         <a-col :span="8">
                           <a-checkbox value="webhook">
-                            <a-icon type="api" /> Webhook
+                            <a-icon type="api" />
+                            Webhook
                           </a-checkbox>
                         </a-col>
                       </a-row>
@@ -364,7 +373,8 @@
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
-                      <span>{{ $t('profile.notifications.telegramHint') || '发送 /start 给 @userinfobot 可获取您的 Chat ID' }}</span>
+                      <span>{{ $t('profile.notifications.telegramHint') || '发送 /start 给 @userinfobot 可获取您的 Chat ID'
+                        }}</span>
                     </div>
                   </a-form-item>
 
@@ -378,7 +388,8 @@
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
-                      <span>{{ $t('profile.notifications.emailHint') || '默认使用账户邮箱，可设置其他邮箱接收通知' }}</span>
+                      <span>{{ $t('profile.notifications.emailHint') || '默认使用账户邮箱，可设置其他邮箱接收通知'
+                        }}</span>
                     </div>
                   </a-form-item>
 
@@ -392,7 +403,8 @@
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
-                      <span>{{ $t('profile.notifications.phoneHint') || '需要管理员配置 Twilio 服务后才能使用短信通知' }}</span>
+                      <span>{{ $t('profile.notifications.phoneHint') || '需要管理员配置 Twilio 服务后才能使用短信通知'
+                        }}</span>
                     </div>
                   </a-form-item>
 
@@ -406,7 +418,8 @@
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
-                      <span>{{ $t('profile.notifications.discordHint') || '在 Discord 服务器设置中创建 Webhook' }}</span>
+                      <span>{{ $t('profile.notifications.discordHint') || '在 Discord 服务器设置中创建 Webhook'
+                        }}</span>
                     </div>
                   </a-form-item>
 
@@ -420,7 +433,8 @@
                     </a-input>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
-                      <span>{{ $t('profile.notifications.webhookHint') || '自定义 Webhook 地址，将以 POST JSON 方式推送通知' }}</span>
+                      <span>{{ $t('profile.notifications.webhookHint') || '自定义 Webhook 地址，将以 POST JSON 方式推送通知'
+                        }}</span>
                     </div>
                   </a-form-item>
 
@@ -434,7 +448,8 @@
                     </a-input-password>
                     <div class="field-hint">
                       <a-icon type="info-circle" />
-                      <span>{{ $t('profile.notifications.webhookTokenHint') || '将作为 Authorization: Bearer Token 发送到 Webhook' }}</span>
+                      <span>{{ $t('profile.notifications.webhookTokenHint') || '将作为 Authorization: Bearer Token 发送到 Webhook'
+                        }}</span>
                     </div>
                   </a-form-item>
 
@@ -505,7 +520,7 @@ import { baseMixin } from '@/store/app-mixin'
 export default {
   name: 'Profile',
   mixins: [baseMixin],
-  data () {
+  data() {
     return {
       loading: false,
       saving: false,
@@ -571,15 +586,15 @@ export default {
     }
   },
   computed: {
-    isDarkTheme () {
+    isDarkTheme() {
       return this.navTheme === 'dark' || this.navTheme === 'realdark'
     },
-    isVip () {
+    isVip() {
       if (!this.billing.vip_expires_at) return false
       const expiresAt = new Date(this.billing.vip_expires_at)
       return expiresAt > new Date()
     },
-    creditsLogColumns () {
+    creditsLogColumns() {
       return [
         {
           title: this.$t('profile.creditsLog.time') || '时间',
@@ -611,7 +626,7 @@ export default {
         }
       ]
     },
-    referralColumns () {
+    referralColumns() {
       return [
         {
           title: this.$t('profile.referral.user') || '用户',
@@ -626,14 +641,14 @@ export default {
         }
       ]
     },
-    referralLink () {
+    referralLink() {
       const baseUrl = window.location.origin + window.location.pathname
       const ref = this.referralData.referral_code || this.profile.id
       return `${baseUrl}#/user/login?ref=${ref}`
     }
   },
   watch: {
-    activeTab (val) {
+    activeTab(val) {
       if (val === 'credits' && this.creditsLog.length === 0) {
         this.loadCreditsLog()
       }
@@ -645,22 +660,22 @@ export default {
       }
     }
   },
-  beforeCreate () {
+  beforeCreate() {
     this.profileForm = this.$form.createForm(this, { name: 'profile' })
     this.passwordForm = this.$form.createForm(this, { name: 'password' })
     this.notificationForm = this.$form.createForm(this, { name: 'notification' })
   },
-  mounted () {
+  mounted() {
     this.loadProfile()
     this.loadReferrals()
   },
-  beforeDestroy () {
+  beforeDestroy() {
     if (this.pwdCodeTimer) {
       clearInterval(this.pwdCodeTimer)
     }
   },
   methods: {
-    async loadProfile () {
+    async loadProfile() {
       this.loading = true
       try {
         const res = await getProfile()
@@ -703,7 +718,7 @@ export default {
       }
     },
 
-    async loadRechargeUrl () {
+    async loadRechargeUrl() {
       // 只有管理员才能获取设置，普通用户使用默认值
       if (this.profile.role === 'admin') {
         try {
@@ -717,23 +732,23 @@ export default {
       }
     },
 
-    handleRecharge () {
+    handleRecharge() {
       // 跳转到 Telegram 客服
       window.open(this.rechargeTelegramUrl, '_blank')
     },
 
-    formatCredits (credits) {
+    formatCredits(credits) {
       if (!credits && credits !== 0) return '0'
       return Number(credits).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
     },
 
-    formatDate (dateStr) {
+    formatDate(dateStr) {
       if (!dateStr) return ''
       const date = new Date(dateStr)
       return date.toLocaleDateString()
     },
 
-    handleSaveProfile () {
+    handleSaveProfile() {
       this.profileForm.validateFields(async (err, values) => {
         if (err) return
 
@@ -754,7 +769,7 @@ export default {
       })
     },
 
-    validateConfirmPassword (rule, value, callback) {
+    validateConfirmPassword(rule, value, callback) {
       const newPassword = this.passwordForm.getFieldValue('new_password')
       if (value && value !== newPassword) {
         callback(this.$t('profile.passwordMismatch') || 'Passwords do not match')
@@ -763,7 +778,7 @@ export default {
       }
     },
 
-    async handleSendPwdCode () {
+    async handleSendPwdCode() {
       if (!this.profile.email) {
         this.$message.error(this.$t('profile.noEmailWarning') || 'Please set your email first')
         return
@@ -789,7 +804,7 @@ export default {
       }
     },
 
-    startPwdCodeCountdown () {
+    startPwdCodeCountdown() {
       this.pwdCodeCountdown = 60
       this.pwdCodeTimer = setInterval(() => {
         this.pwdCodeCountdown--
@@ -800,7 +815,7 @@ export default {
       }, 1000)
     },
 
-    validateNewPassword (rule, value, callback) {
+    validateNewPassword(rule, value, callback) {
       if (!value) {
         callback()
         return
@@ -824,7 +839,7 @@ export default {
       callback()
     },
 
-    handleChangePassword () {
+    handleChangePassword() {
       this.passwordForm.validateFields(async (err, values) => {
         if (err) return
 
@@ -849,7 +864,7 @@ export default {
       })
     },
 
-    getRoleColor (role) {
+    getRoleColor(role) {
       const colors = {
         admin: 'red',
         manager: 'orange',
@@ -859,7 +874,7 @@ export default {
       return colors[role] || 'default'
     },
 
-    getRoleLabel (role) {
+    getRoleLabel(role) {
       const labels = {
         admin: this.$t('userManage.roleAdmin') || 'Admin',
         manager: this.$t('userManage.roleManager') || 'Manager',
@@ -869,14 +884,14 @@ export default {
       return labels[role] || role
     },
 
-    formatTime (timestamp) {
+    formatTime(timestamp) {
       if (!timestamp) return ''
       const date = new Date(typeof timestamp === 'number' ? timestamp * 1000 : timestamp)
       return date.toLocaleString()
     },
 
     // Credits log methods
-    async loadCreditsLog () {
+    async loadCreditsLog() {
       this.creditsLogLoading = true
       try {
         const res = await getMyCreditsLog({
@@ -894,13 +909,13 @@ export default {
       }
     },
 
-    handleCreditsLogChange (pagination) {
+    handleCreditsLogChange(pagination) {
       this.creditsLogPagination.current = pagination.current
       this.loadCreditsLog()
     },
 
     // Referral methods
-    async loadReferrals () {
+    async loadReferrals() {
       this.referralLoading = true
       try {
         const res = await getMyReferrals({
@@ -924,12 +939,12 @@ export default {
       }
     },
 
-    handleReferralChange (pagination) {
+    handleReferralChange(pagination) {
       this.referralPagination.current = pagination.current
       this.loadReferrals()
     },
 
-    copyReferralLink () {
+    copyReferralLink() {
       const link = this.referralLink
       if (navigator.clipboard) {
         navigator.clipboard.writeText(link).then(() => {
@@ -942,7 +957,7 @@ export default {
       }
     },
 
-    fallbackCopy (text) {
+    fallbackCopy(text) {
       const textarea = document.createElement('textarea')
       textarea.value = text
       document.body.appendChild(textarea)
@@ -956,7 +971,7 @@ export default {
       document.body.removeChild(textarea)
     },
 
-    getActionColor (action) {
+    getActionColor(action) {
       const colors = {
         consume: 'red',
         recharge: 'green',
@@ -973,7 +988,7 @@ export default {
       return colors[action] || 'default'
     },
 
-    getActionLabel (action) {
+    getActionLabel(action) {
       const labels = {
         consume: this.$t('profile.creditsLog.actionConsume') || '消费',
         recharge: this.$t('profile.creditsLog.actionRecharge') || '充值',
@@ -991,7 +1006,7 @@ export default {
     },
 
     // Notification settings methods
-    async loadNotificationSettings () {
+    async loadNotificationSettings() {
       try {
         const res = await getNotificationSettings()
         if (res.code === 1 && res.data) {
@@ -1024,7 +1039,7 @@ export default {
       }
     },
 
-    handleSaveNotifications () {
+    handleSaveNotifications() {
       this.notificationForm.validateFields(async (err, values) => {
         if (err) return
 
@@ -1054,7 +1069,7 @@ export default {
       })
     },
 
-    async handleTestNotification () {
+    async handleTestNotification() {
       const values = this.notificationForm.getFieldsValue()
       const channels = values.default_channels || []
 
@@ -1094,7 +1109,7 @@ export default {
         })
 
         if (saveRes.code !== 1) {
-          this.$message.error(saveRes.msg || '保存设置失败')
+          this.$message.error(saveRes.msg || '发送测试通知失败')
           return
         }
 
@@ -1556,6 +1571,7 @@ export default {
       .page-title {
         color: #e0e6ed;
       }
+
       .page-desc {
         color: #8b949e;
       }
