@@ -148,6 +148,18 @@ export function updateNotificationSettings (data) {
 }
 
 /**
+ * test current user's notification settings
+ * @param {Object} data - { default_channels, telegram_chat_id, email, discord_webhook, webhook_url, phone }
+ */
+export function testNotificationSettings (data) {
+  return request({
+    url: '/api/users/notification-settings-test',
+    method: 'post',
+    data
+  })
+}
+
+/**
  * Get current user's credits log
  * @param {Object} params - { page, page_size }
  */
