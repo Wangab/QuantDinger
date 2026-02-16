@@ -6,6 +6,9 @@ Only accessible by admin users.
 """
 import json
 from flask import Blueprint, request, jsonify, g
+
+from app.services.email_service import get_email_service
+from app.services.telegram_service import TelegramService
 from app.services.user_service import get_user_service
 from app.utils.auth import login_required, admin_required
 from app.utils.db import get_db_connection
@@ -33,9 +36,9 @@ def list_users():
         page_size = request.args.get('page_size', 20, type=int)
         search = request.args.get('search', '', type=str)
         page_size = min(100, max(1, page_size))
-        
+
         result = get_user_service().list_users(page=page, page_size=page_size, search=search)
-        
+
         return jsonify({
             'code': 1,
             'msg': 'success',
@@ -55,11 +58,11 @@ def get_user_detail():
         user_id = request.args.get('id', type=int)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Missing user id', 'data': None}), 400
-        
+
         user = get_user_service().get_user_by_id(user_id)
         if not user:
             return jsonify({'code': 0, 'msg': 'User not found', 'data': None}), 404
-        
+
         return jsonify({
             'code': 1,
             'msg': 'success',
@@ -86,9 +89,9 @@ def create_user():
     """
     try:
         data = request.get_json() or {}
-        
+
         user_id = get_user_service().create_user(data)
-        
+
         return jsonify({
             'code': 1,
             'msg': 'User created successfully',
@@ -121,11 +124,11 @@ def update_user():
         user_id = request.args.get('id', type=int)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Missing user id', 'data': None}), 400
-        
+
         data = request.get_json() or {}
-        
+
         success = get_user_service().update_user(user_id, data)
-        
+
         if success:
             return jsonify({'code': 1, 'msg': 'User updated successfully', 'data': None})
         else:
@@ -144,13 +147,13 @@ def delete_user():
         user_id = request.args.get('id', type=int)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Missing user id', 'data': None}), 400
-        
+
         # Prevent deleting self
         if hasattr(g, 'user_id') and g.user_id == user_id:
             return jsonify({'code': 0, 'msg': 'Cannot delete yourself', 'data': None}), 400
-        
+
         success = get_user_service().delete_user(user_id)
-        
+
         if success:
             return jsonify({'code': 1, 'msg': 'User deleted successfully', 'data': None})
         else:
@@ -175,15 +178,15 @@ def reset_user_password():
         data = request.get_json() or {}
         user_id = data.get('user_id')
         new_password = data.get('new_password', '')
-        
+
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Missing user_id', 'data': None}), 400
-        
+
         if len(new_password) < 6:
             return jsonify({'code': 0, 'msg': 'Password must be at least 6 characters', 'data': None}), 400
-        
+
         success = get_user_service().reset_password(user_id, new_password)
-        
+
         if success:
             return jsonify({'code': 1, 'msg': 'Password reset successfully', 'data': None})
         else:
@@ -201,7 +204,7 @@ def reset_user_password():
 def get_roles():
     """Get available roles and their permissions"""
     service = get_user_service()
-    
+
     roles = []
     for role in service.ROLES:
         roles.append({
@@ -209,7 +212,7 @@ def get_roles():
             'name': role.capitalize(),
             'permissions': service.get_user_permissions(role)
         })
-    
+
     return jsonify({
         'code': 1,
         'msg': 'success',
@@ -233,21 +236,21 @@ def set_user_credits():
     """
     try:
         from app.services.billing_service import get_billing_service
-        
+
         data = request.get_json() or {}
         user_id = data.get('user_id')
         credits = data.get('credits')
         remark = data.get('remark', '')
-        
+
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Missing user_id', 'data': None}), 400
-        
+
         if credits is None or credits < 0:
             return jsonify({'code': 0, 'msg': 'Credits must be a non-negative number', 'data': None}), 400
-        
+
         operator_id = getattr(g, 'user_id', None)
         success, result = get_billing_service().set_credits(user_id, int(credits), remark, operator_id)
-        
+
         if success:
             return jsonify({'code': 1, 'msg': 'Credits updated successfully', 'data': {'credits': result}})
         else:
@@ -273,16 +276,16 @@ def set_user_vip():
     try:
         from datetime import datetime, timedelta, timezone
         from app.services.billing_service import get_billing_service
-        
+
         data = request.get_json() or {}
         user_id = data.get('user_id')
         vip_days = data.get('vip_days')
         vip_expires_at_str = data.get('vip_expires_at')
         remark = data.get('remark', '')
-        
+
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Missing user_id', 'data': None}), 400
-        
+
         # Calculate expires_at
         expires_at = None
         if vip_expires_at_str:
@@ -297,14 +300,14 @@ def set_user_vip():
                 expires_at = None  # Cancel VIP
         else:
             return jsonify({'code': 0, 'msg': 'Provide vip_days or vip_expires_at', 'data': None}), 400
-        
+
         operator_id = getattr(g, 'user_id', None)
         success, result = get_billing_service().set_vip(user_id, expires_at, remark, operator_id)
-        
+
         if success:
             return jsonify({
-                'code': 1, 
-                'msg': 'VIP status updated successfully', 
+                'code': 1,
+                'msg': 'VIP status updated successfully',
                 'data': {'vip_expires_at': expires_at.isoformat() if expires_at else None}
             })
         else:
@@ -328,17 +331,17 @@ def get_user_credits_log():
     """
     try:
         from app.services.billing_service import get_billing_service
-        
+
         user_id = request.args.get('user_id', type=int)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Missing user_id', 'data': None}), 400
-        
+
         page = request.args.get('page', 1, type=int)
         page_size = request.args.get('page_size', 20, type=int)
         page_size = min(100, max(1, page_size))
-        
+
         result = get_billing_service().get_credits_log(user_id, page, page_size)
-        
+
         return jsonify({'code': 1, 'msg': 'success', 'data': result})
     except Exception as e:
         logger.error(f"get_user_credits_log failed: {e}")
@@ -355,29 +358,29 @@ def get_profile():
         import json
         from app.services.billing_service import get_billing_service
         from app.utils.db import get_db_connection
-        
+
         user_id = getattr(g, 'user_id', None)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
-        
+
         user = get_user_service().get_user_by_id(user_id)
         if not user:
             return jsonify({'code': 0, 'msg': 'User not found', 'data': None}), 404
-        
+
         # Add permissions
         user['permissions'] = get_user_service().get_user_permissions(user.get('role', 'user'))
-        
+
         # Add billing info
         billing_info = get_billing_service().get_user_billing_info(user_id)
         user['billing'] = billing_info
-        
+
         # Add notification settings
         with get_db_connection() as db:
             cur = db.cursor()
             cur.execute("SELECT notification_settings FROM qd_users WHERE id = ?", (user_id,))
             row = cur.fetchone()
             cur.close()
-        
+
         settings_str = (row.get('notification_settings') if row else '') or ''
         notification_settings = {}
         if settings_str:
@@ -385,13 +388,13 @@ def get_profile():
                 notification_settings = json.loads(settings_str)
             except Exception:
                 notification_settings = {}
-        
+
         # Default values
         if 'default_channels' not in notification_settings:
             notification_settings['default_channels'] = ['browser']
-        
+
         user['notification_settings'] = notification_settings
-        
+
         return jsonify({
             'code': 1,
             'msg': 'success',
@@ -419,21 +422,21 @@ def update_profile():
         user_id = getattr(g, 'user_id', None)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
-        
+
         data = request.get_json() or {}
-        
+
         # Only allow updating certain fields for self-service
         # Email is NOT allowed to be changed (security: bound to account)
         allowed = {}
         for field in ['nickname', 'avatar']:
             if field in data:
                 allowed[field] = data[field]
-        
+
         if not allowed:
             return jsonify({'code': 0, 'msg': 'No valid fields to update', 'data': None}), 400
-        
+
         success = get_user_service().update_user(user_id, allowed)
-        
+
         if success:
             return jsonify({'code': 1, 'msg': 'Profile updated successfully', 'data': None})
         else:
@@ -455,17 +458,17 @@ def get_my_credits_log():
     """
     try:
         from app.services.billing_service import get_billing_service
-        
+
         user_id = getattr(g, 'user_id', None)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
-        
+
         page = request.args.get('page', 1, type=int)
         page_size = request.args.get('page_size', 20, type=int)
         page_size = min(100, max(1, page_size))
-        
+
         result = get_billing_service().get_credits_log(user_id, page, page_size)
-        
+
         return jsonify({'code': 1, 'msg': 'success', 'data': result})
     except Exception as e:
         logger.error(f"get_my_credits_log failed: {e}")
@@ -492,26 +495,26 @@ def get_my_referrals():
     try:
         import os
         from app.utils.db import get_db_connection
-        
+
         user_id = getattr(g, 'user_id', None)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
-        
+
         page = request.args.get('page', 1, type=int)
         page_size = request.args.get('page_size', 20, type=int)
         page_size = min(100, max(1, page_size))
         offset = (page - 1) * page_size
-        
+
         with get_db_connection() as db:
             cur = db.cursor()
-            
+
             # Get total count
             cur.execute(
                 "SELECT COUNT(*) as cnt FROM qd_users WHERE referred_by = ?",
                 (user_id,)
             )
             total = cur.fetchone()['cnt']
-            
+
             # Get referral list
             cur.execute(
                 """
@@ -525,7 +528,7 @@ def get_my_referrals():
             )
             rows = cur.fetchall()
             cur.close()
-            
+
             referrals = []
             for row in rows:
                 referrals.append({
@@ -535,7 +538,7 @@ def get_my_referrals():
                     'avatar': row['avatar'],
                     'created_at': row['created_at'].isoformat() if row['created_at'] else None
                 })
-        
+
         return jsonify({
             'code': 1,
             'msg': 'success',
@@ -571,20 +574,20 @@ def get_notification_settings():
     try:
         import json
         from app.utils.db import get_db_connection
-        
+
         user_id = getattr(g, 'user_id', None)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
-        
+
         with get_db_connection() as db:
             cur = db.cursor()
             cur.execute("SELECT notification_settings, email FROM qd_users WHERE id = ?", (user_id,))
             row = cur.fetchone()
             cur.close()
-        
+
         if not row:
             return jsonify({'code': 0, 'msg': 'User not found', 'data': None}), 404
-        
+
         # Parse notification_settings JSON
         settings_str = row.get('notification_settings') or ''
         settings = {}
@@ -593,13 +596,13 @@ def get_notification_settings():
                 settings = json.loads(settings_str)
             except Exception:
                 settings = {}
-        
+
         # Default values
         if 'default_channels' not in settings:
             settings['default_channels'] = ['browser']
         if 'email' not in settings:
             settings['email'] = row.get('email') or ''
-        
+
         return jsonify({
             'code': 1,
             'msg': 'success',
@@ -607,6 +610,67 @@ def get_notification_settings():
         })
     except Exception as e:
         logger.error(f"get_notification_settings failed: {e}")
+        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
+
+
+@user_bp.route('/notification-settings-test', methods=['POST'])
+@login_required
+def test_notification_settings():
+    """
+    Test notification settings.
+    Request body:
+        default_channels: list of str (optional, e.g. ['browser', 'telegram'])
+        telegram_bot_token: str (optional, user's own Telegram bot token)
+        telegram_chat_id: str (optional)
+        email: str (optional, for notification override)
+        discord_webhook: str (optional)
+    """
+    try:
+        import json
+        from app.utils.db import get_db_connection
+
+        user_id = getattr(g, 'user_id', None)
+        if not user_id:
+            return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
+
+        data = request.get_json() or {}
+
+        # Validate channels
+        valid_channels = ['browser', 'email', 'telegram', 'discord', 'webhook', 'phone']
+        default_channels = data.get('default_channels', [])
+        if not isinstance(default_channels, list):
+            default_channels = ['browser']
+        default_channels = [c for c in default_channels if c in valid_channels]
+        if not default_channels:
+            default_channels = ['browser']
+
+        # Build settings object
+        settings = {
+            'default_channels': default_channels,
+            'telegram_bot_token': str(data.get('telegram_bot_token') or '').strip(),
+            'telegram_chat_id': str(data.get('telegram_chat_id') or '').strip(),
+            'email': str(data.get('email') or '').strip(),
+            'discord_webhook': str(data.get('discord_webhook') or '').strip(),
+            'webhook_url': str(data.get('webhook_url') or '').strip(),
+            'phone': str(data.get('phone') or '').strip(),
+        }
+        for channel in default_channels:
+            if 'email' == channel:
+                get_email_service().send_email(
+                    settings.get('email'),
+                    "Test notification settings email",
+                    "This is a test notification settings email")
+            if 'telegram' == channel:
+                TelegramService(settings.get("telegram_bot_token")).send_message(
+                    settings.get('telegram_chat_id'),
+                    "Test notification settings telegram")
+        return jsonify({
+            'code': 1,
+            'msg': 'Notification settings test',
+            'data': settings
+        })
+    except Exception as e:
+        logger.error(f"update_notification_settings test: {e}")
         return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
 
 
@@ -626,13 +690,13 @@ def update_notification_settings():
     try:
         import json
         from app.utils.db import get_db_connection
-        
+
         user_id = getattr(g, 'user_id', None)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
-        
+
         data = request.get_json() or {}
-        
+
         # Validate channels
         valid_channels = ['browser', 'email', 'telegram', 'discord', 'webhook', 'phone']
         default_channels = data.get('default_channels', [])
@@ -641,7 +705,7 @@ def update_notification_settings():
         default_channels = [c for c in default_channels if c in valid_channels]
         if not default_channels:
             default_channels = ['browser']
-        
+
         # Build settings object
         settings = {
             'default_channels': default_channels,
@@ -652,12 +716,12 @@ def update_notification_settings():
             'webhook_url': str(data.get('webhook_url') or '').strip(),
             'phone': str(data.get('phone') or '').strip(),
         }
-        
+
         # Remove empty values (but keep default_channels and telegram_bot_token even if partially filled)
         settings = {k: v for k, v in settings.items() if v or k == 'default_channels'}
-        
+
         settings_json = json.dumps(settings, ensure_ascii=False)
-        
+
         with get_db_connection() as db:
             cur = db.cursor()
             cur.execute(
@@ -666,7 +730,7 @@ def update_notification_settings():
             )
             db.commit()
             cur.close()
-        
+
         return jsonify({
             'code': 1,
             'msg': 'Notification settings updated',
@@ -691,23 +755,23 @@ def change_password():
         user_id = getattr(g, 'user_id', None)
         if not user_id:
             return jsonify({'code': 0, 'msg': 'Not authenticated', 'data': None}), 401
-        
+
         data = request.get_json() or {}
         old_password = data.get('old_password', '')
         new_password = data.get('new_password', '')
-        
+
         if not new_password:
             return jsonify({'code': 0, 'msg': 'New password required', 'data': None}), 400
-        
+
         if len(new_password) < 6:
             return jsonify({'code': 0, 'msg': 'New password must be at least 6 characters', 'data': None}), 400
-        
+
         # Check if user has a password set
         user_service = get_user_service()
         user = user_service.get_user_by_id(user_id)
         if not user:
             return jsonify({'code': 0, 'msg': 'User not found', 'data': None}), 404
-        
+
         # Get password_hash to check if user has no password
         from app.utils.db import get_db_connection
         with get_db_connection() as db:
@@ -715,10 +779,10 @@ def change_password():
             cur.execute("SELECT password_hash FROM qd_users WHERE id = ?", (user_id,))
             row = cur.fetchone()
             cur.close()
-        
+
         password_hash = row.get('password_hash', '') if row else ''
         has_password = password_hash and password_hash.strip() != ''
-        
+
         # If user has no password, allow setting password without old password
         if not has_password:
             if not old_password:
@@ -739,9 +803,9 @@ def change_password():
             # User has existing password, require old password verification
             if not old_password:
                 return jsonify({'code': 0, 'msg': 'Old password required', 'data': None}), 400
-            
+
             success = user_service.change_password(user_id, old_password, new_password)
-            
+
             if success:
                 return jsonify({'code': 1, 'msg': 'Password changed successfully', 'data': None})
             else:
