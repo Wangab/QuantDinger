@@ -38,11 +38,100 @@ class BinanceSpotClient(BaseRestClient):
             return Decimal("0")
 
     @staticmethod
-    def _dec_str(d: Decimal) -> str:
+    def _dec_str(d: Decimal, max_decimals: int = 18, strict_precision: Optional[int] = None) -> str:
+        """
+        Convert Decimal to string with controlled precision.
+        Binance requires quantities/prices to match LOT_SIZE/PRICE_FILTER precision.
+        This method ensures the output string doesn't exceed the required precision.
+        
+        Args:
+            d: Decimal value to format
+            max_decimals: Maximum decimal places (fallback if strict_precision not provided)
+            strict_precision: If provided, strictly limit to this many decimal places (no trailing zero removal)
+        """
         try:
-            return format(d, "f")
+            if d == 0:
+                return "0"
+            # Normalize to remove unnecessary trailing zeros from internal representation
+            normalized = d.normalize()
+            
+            # If strict_precision is provided, use it and strictly limit decimal places
+            # This ensures we match the stepSize requirement exactly
+            if strict_precision is not None:
+                try:
+                    prec = int(strict_precision)
+                    if prec < 0:
+                        prec = 0
+                    if prec > 18:
+                        prec = 18
+                    # Use quantize to ensure exact precision (round down to match stepSize)
+                    q = Decimal("1").scaleb(-prec)
+                    quantized = normalized.quantize(q, rounding=ROUND_DOWN)
+                    # Format with exact precision - this will produce at most 'prec' decimal places
+                    # Use fixed-point format to ensure we don't exceed precision
+                    s = format(quantized, f".{prec}f")
+                    # Remove trailing zeros and decimal point if not needed
+                    # This is safe because we've already quantized to the correct precision
+                    if '.' in s:
+                        s = s.rstrip('0').rstrip('.')
+                    return s if s else "0"
+                except Exception:
+                    pass
+            
+            # Fallback to original logic if strict_precision not provided or failed
+            # Convert to string using fixed-point notation
+            s = format(normalized, f".{max_decimals}f")
+            # Remove trailing zeros and decimal point if not needed
+            if '.' in s:
+                s = s.rstrip('0').rstrip('.')
+            return s if s else "0"
         except Exception:
-            return str(d)
+            # Fallback: try to convert safely
+            try:
+                f = float(d)
+                if f == 0:
+                    return "0"
+                if strict_precision is not None:
+                    try:
+                        prec = int(strict_precision)
+                        if prec < 0:
+                            prec = 0
+                        if prec > 18:
+                            prec = 18
+                        s = format(f, f".{prec}f")
+                        if '.' in s:
+                            s = s.rstrip('0').rstrip('.')
+                        return s if s else "0"
+                    except Exception:
+                        pass
+                # Format with max_decimals and remove trailing zeros
+                s = format(f, f".{max_decimals}f")
+                if '.' in s:
+                    s = s.rstrip('0').rstrip('.')
+                return s if s else "0"
+            except Exception:
+                # Last resort: convert to string
+                s = str(d)
+                # Try to remove scientific notation if present
+                if 'e' in s.lower() or 'E' in s:
+                    try:
+                        f = float(s)
+                        if strict_precision is not None:
+                            try:
+                                prec = int(strict_precision)
+                                if 0 <= prec <= 18:
+                                    s = format(f, f".{prec}f")
+                                    if '.' in s:
+                                        s = s.rstrip('0').rstrip('.')
+                                    return s if s else "0"
+                            except Exception:
+                                pass
+                        s = format(f, f".{max_decimals}f")
+                        if '.' in s:
+                            s = s.rstrip('0').rstrip('.')
+                    except Exception:
+                        pass
+                return s if s else "0"
 
     @staticmethod
     def _floor_to_step(value: Decimal, step: Decimal) -> Decimal:
@@ -196,13 +285,16 @@ class BinanceSpotClient(BaseRestClient):
             return Decimal("0")
         return px
 
-    def _normalize_quantity(self, *, symbol: str, quantity: float, for_market: bool) -> Decimal:
+    def _normalize_quantity(self, *, symbol: str, quantity: float, for_market: bool) -> Tuple[Decimal, Optional[int]]:
         """
         Normalize spot order quantity using LOT_SIZE / MARKET_LOT_SIZE filters (best-effort).
+        
+        Returns:
+            Tuple of (normalized_quantity, precision) where precision is the number of decimal places required.
         """
         q = self._to_dec(quantity)
         if q <= 0:
-            return Decimal("0")
+            return (Decimal("0"), None)
         fdict: Dict[str, Any] = {}
         try:
             fdict = self.get_symbol_filters(symbol=symbol) or {}
@@ -217,15 +309,46 @@ class BinanceSpotClient(BaseRestClient):
 
         if step > 0:
             q = self._floor_to_step(q, step)
+        
         # Enforce quantity precision cap (Binance may reject quantities with too many decimals: -1111).
+        # First try to get precision from metadata
+        qty_precision = None
         try:
             meta = fdict.get("_meta") or {}
-            q = self._floor_to_precision(q, (meta.get("quantityPrecision") if isinstance(meta, dict) else None))
+            if isinstance(meta, dict):
+                qty_precision = meta.get("quantityPrecision")
         except Exception:
             pass
+        
+        # If precision not available, infer from stepSize
+        if qty_precision is None and step > 0:
+            try:
+                # stepSize like "0.001" means 3 decimal places
+                # Use normalize() to remove trailing zeros, then count decimal places
+                step_normalized = step.normalize()
+                step_str = str(step_normalized)
+                if '.' in step_str:
+                    # Count decimal places after removing trailing zeros
+                    decimal_part = step_str.split('.')[1]
+                    qty_precision = len(decimal_part)
+                    # Ensure precision is at least 0 and at most 18
+                    if qty_precision < 0:
+                        qty_precision = 0
+                    if qty_precision > 18:
+                        qty_precision = 18
+                else:
+                    # If stepSize is 1 or larger, precision is 0
+                    qty_precision = 0
+            except Exception:
+                pass
+        
+        # Apply precision limit
+        if qty_precision is not None:
+            q = self._floor_to_precision(q, qty_precision)
+        
         if min_qty > 0 and q < min_qty:
-            return Decimal("0")
-        return q
+            return (Decimal("0"), qty_precision)
+        return (q, qty_precision)
 
     def place_limit_order(
         self,
@@ -244,7 +367,7 @@ class BinanceSpotClient(BaseRestClient):
         px = float(price or 0.0)
         if q_req <= 0 or px <= 0:
             raise LiveTradingError("Invalid quantity/price")
-        q_dec = self._normalize_quantity(symbol=symbol, quantity=q_req, for_market=False)
+        q_dec, qty_precision = self._normalize_quantity(symbol=symbol, quantity=q_req, for_market=False)
         if float(q_dec or 0) <= 0:
             raise LiveTradingError(f"Invalid quantity (below step/minQty): requested={q_req}")
         px_dec = self._normalize_price(symbol=symbol, price=px)
@@ -256,7 +379,7 @@ class BinanceSpotClient(BaseRestClient):
             "side": sd,
             "type": "LIMIT",
             "timeInForce": "GTC",
-            "quantity": self._dec_str(q_dec),
+            "quantity": self._dec_str(q_dec, strict_precision=qty_precision),
             "price": self._dec_str(px_dec),
         }
         if client_order_id:
@@ -266,7 +389,7 @@ class BinanceSpotClient(BaseRestClient):
         except LiveTradingError as e:
             raise LiveTradingError(
                 f"{e} | debug: symbol={sym} side={sd} "
-                f"qty_req={q_req} qty_norm={self._dec_str(q_dec)} "
+                f"qty_req={q_req} qty_norm={self._dec_str(q_dec, strict_precision=qty_precision)} "
                 f"price_req={px} price_norm={self._dec_str(px_dec)}"
             )
         return LiveOrderResult(
@@ -290,7 +413,7 @@ class BinanceSpotClient(BaseRestClient):
         if sd not in ("BUY", "SELL"):
             raise LiveTradingError(f"Invalid side: {side}")
         q_req = float(quantity or 0.0)
-        q_dec = self._normalize_quantity(symbol=symbol, quantity=q_req, for_market=True)
+        q_dec, qty_precision = self._normalize_quantity(symbol=symbol, quantity=q_req, for_market=True)
         if float(q_dec or 0) <= 0:
             raise LiveTradingError(f"Invalid quantity (below step/minQty): requested={q_req}")
 
@@ -298,7 +421,7 @@ class BinanceSpotClient(BaseRestClient):
             "symbol": sym,
             "side": sd,
             "type": "MARKET",
-            "quantity": self._dec_str(q_dec),
+            "quantity": self._dec_str(q_dec, strict_precision=qty_precision),
         }
         if client_order_id:
             params["newClientOrderId"] = str(client_order_id)
@@ -307,7 +430,7 @@ class BinanceSpotClient(BaseRestClient):
         except LiveTradingError as e:
             raise LiveTradingError(
                 f"{e} | debug: symbol={sym} side={sd} "
-                f"qty_req={q_req} qty_norm={self._dec_str(q_dec)}"
+                f"qty_req={q_req} qty_norm={self._dec_str(q_dec, strict_precision=qty_precision)}"
             )
         return LiveOrderResult(
             exchange_id="binance",
