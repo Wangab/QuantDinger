@@ -22,5 +22,5 @@ mkdir -p logs
 python run.py
 
 # 生产环境（使用 gunicorn）
-# gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 --access-logfile logs/access.log --error-logfile logs/error.log "run:create_app()"
+# gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 --access-logfile logs/access.log --error-logfile logs/error.log "run:app"
 
